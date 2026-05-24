@@ -3,3 +3,5 @@ __pycache__/
 tmp_*.py
 .claude/
 .deps/
+web/.env
+web/*.db

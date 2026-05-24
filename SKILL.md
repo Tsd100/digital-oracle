@@ -214,7 +214,11 @@ if chain:
 - `web.fetch_page("url")` → returns `WebPageContent` (page body extraction)
 - Search engine is DuckDuckGo, zero API keys needed
 
-**Data not available via structured providers — use web search instead:** VIX, MOVE, CDS spreads, TTF natural gas, BDI freight rates, war risk premiums, high-yield OAS — these need to be fetched from financial web pages. They are still trading data and comply with the methodology.
+**Data not available via structured providers — use web search instead:** MOVE index, CDS spreads, TTF natural gas, BDI freight rates, war risk premiums, high-yield OAS — these need to be fetched from financial web pages. They are still trading data and comply with the methodology.
+
+**VIX:** Can be fetched directly via `YahooPriceProvider` with symbol `^VIX`, or via web search as a fallback.
+
+**Network note:** Kalshi (`api.elections.kalshi.com`), CME FedWatch (`cmegroup.com`), and CFTC (`publicreporting.cftc.gov`) may be inaccessible from some regions without a proxy. Always wrap these in try/except and fall back to alternative signals when unavailable.
 
 ### Step 5: Data analysis
 
@@ -308,7 +312,7 @@ Four analysis dimensions:
 ## Notes
 
 - Polymarket `slug_contains` search is fuzzy — filter results by title keywords after fetching
-- YahooPriceProvider uses Yahoo Finance symbols: futures use `=F` suffix (e.g. `GC=F`, `CL=F`, `HG=F`), forex uses `=X` suffix (e.g. `EURUSD=X`), US stocks/ETFs use plain tickers (e.g. `SPY`, `LMT`)
+- YahooPriceProvider uses Yahoo Finance symbols: futures use `=F` suffix (e.g. `GC=F`, `CL=F`, `HG=F`), forex uses `=X` suffix (e.g. `EURUSD=X`), US stocks/ETFs use plain tickers (e.g. `SPY`, `LMT`), indices use `^` prefix (e.g. `^VIX` for VIX, `DX-Y.NYB` for DXY/US Dollar Index)
 - YahooPriceProvider requires `yfinance` — install with `uv pip install --target .deps yfinance`
 - European stocks available on Yahoo Finance with exchange suffix (e.g. `RHM.DE` for Rheinmetall, `BA.L` for BAE Systems)
 - Prediction market contracts vary in liquidity — contracts with volume < $100K should be discounted
