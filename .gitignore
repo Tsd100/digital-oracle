@@ -5,3 +5,4 @@ tmp_*.py
 .deps/
 web/.env
 web/*.db
+node_modules/
