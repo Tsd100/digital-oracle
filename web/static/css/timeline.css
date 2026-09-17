@@ -1,0 +1,33 @@
+:root { color-scheme: dark; font-family: Inter, "Microsoft YaHei", system-ui, sans-serif; background: #0d1220; color: #ecf1fa; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 15% 0, #1b2b48, transparent 36%), #0d1220; }
+.topbar { display: flex; justify-content: space-between; padding: 22px max(30px, calc((100vw - 1100px)/2)); border-bottom: 1px solid #31415e; color: #aab9d4; }
+a { color: #93b9ff; text-decoration: none; }
+.layout { max-width: 1100px; margin: auto; padding: 28px 24px 80px; }
+.hero { padding: 28px 4px 36px; }
+.eyebrow { letter-spacing: .18em; font-size: 12px; color: #91b9fc; }
+h1 { margin: 7px 0 12px; font-size: clamp(30px, 5vw, 48px); }
+h2 { font-size: 20px; margin: 0 0 20px; }
+.hero p:not(.eyebrow) { color: #aab9d4; max-width: 720px; line-height: 1.7; }
+.controls { margin-top: 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: #aab9d4; }
+select { background: #16223a; border: 1px solid #45618f; border-radius: 8px; color: #f5f8ff; padding: 10px 14px; font: inherit; }
+.panel { background: #111b2e; border: 1px solid #2c4161; border-radius: 16px; padding: 24px; margin-bottom: 22px; }
+.changes, .timeline { display: grid; gap: 12px; }
+.report-card, .change-card { position: relative; border: 1px solid #2d4160; border-radius: 11px; padding: 17px 19px; background: #16243b; }
+.date { font-size: 12px; color: #83a9de; margin-bottom: 7px; }
+.report-title { padding: 0; border: 0; background: none; color: #f4f7ff; font: inherit; font-size: 17px; font-weight: 600; text-align: left; cursor: pointer; }
+.report-title:hover { color: #99c5ff; }
+.summary { margin: 10px 0; line-height: 1.6; color: #d1dbeb; }
+.detail, .empty { color: #92a7c3; font-size: 13px; }
+.quality { display: inline-block; margin-top: 10px; border-radius: 20px; padding: 4px 9px; font-size: 11px; }
+.quality.confirmed { color: #8be2b4; background: #164b3c; }
+.quality.review { color: #ffd49c; background: #55402b; }
+.change-card strong { color: #edf4ff; }
+.change-card p { margin: 7px 0 0; color: #bdcce2; }
+.change-card .warning { color: #ffd49c; }
+dialog { width: min(900px, 92vw); max-height: 90vh; background: #111b2e; border: 1px solid #45618f; border-radius: 12px; color: #ecf1fa; padding: 24px; }
+dialog::backdrop { background: #000b; }
+#close-dialog { float: right; color: #fff; background: none; border: 0; font-size: 26px; cursor: pointer; }
+#dialog-source { color: #8fa5c6; font-size: 12px; overflow-wrap: anywhere; }
+#dialog-content { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 "Cascadia Code", "Microsoft YaHei", monospace; }
+@media(max-width: 640px) { .layout { padding: 15px 12px 50px; } .panel { padding: 16px; } .topbar { padding: 16px; } }

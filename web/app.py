@@ -29,6 +29,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from web.db import delete_history_item, get_history, get_history_item, init_db, insert_question, save_report, update_status
 from web.fetcher import run_fetch
 from web.analysis import generate_report, _is_llm_configured, AVAILABLE_MODELS, DEFAULT_MODEL
+from digital_oracle.timeline import TimelineStore, compare_subject, import_sources
+from digital_oracle.timeline.store import DEFAULT_DB as TIMELINE_DEFAULT_DB, DEFAULT_ARCHIVE
+
+TIMELINE_DB = TIMELINE_DEFAULT_DB
 
 # ---------------------------------------------------------------------------
 # In-memory registry for active SSE streams
@@ -73,6 +77,10 @@ def _run_workflow(qid: str, question: str, model: str) -> None:
         report = generate_report(question, results, queue, model=model)
 
         save_report(qid, report)
+        try:
+            TimelineStore(TIMELINE_DB).add(f"web:{qid}", report, "web")
+        except Exception as exc:
+            queue.put({"event": "progress", "data": {"step": 3, "message": f"报告已保存，时间线待补录：{exc}"}})
         queue.put({"event": "done", "data": {
             "id": qid, "status": "done",
             "llm_used": _is_llm_configured(),
@@ -98,6 +106,12 @@ def create_app() -> Flask:
     )
 
     init_db()
+    if TIMELINE_DB == TIMELINE_DEFAULT_DB:
+        # Normal startup refreshes the index from immutable report sources.
+        try:
+            import_sources(TIMELINE_DB, [PROJECT_ROOT / "reports", DEFAULT_ARCHIVE], Path(__file__).resolve().parent / "digital_oracle.db")
+        except Exception as exc:
+            app.logger.warning("历史时间线索引暂不可用: %s", exc)
 
     # ---- Page routes ----
 
@@ -109,6 +123,31 @@ def create_app() -> Flask:
             available_models=AVAILABLE_MODELS,
             default_model=DEFAULT_MODEL,
         )
+
+    @app.route("/timeline")
+    def timeline_page():
+        return render_template("timeline.html")
+
+    @app.route("/api/timeline")
+    def api_timeline():
+        subject = request.args.get("subject", "").strip()
+        store = TimelineStore(TIMELINE_DB)
+        rows = store.list_reports(subject or None)
+        if subject:
+            pairs = compare_subject(rows, subject)["pairs"]
+            changes = [{"old_hash": p["old"]["hash"], "new_hash": p["new"]["hash"],
+                        "judgment_change": p["judgment_change"], "main_probability_delta": p["main_probability_delta"],
+                        "comparability": p["comparability"], "session_changed": p["session_changed"]} for p in pairs]
+        else:
+            changes = []
+        return jsonify({"reports": rows, "changes": changes, "counts": store.counts()})
+
+    @app.route("/api/timeline/report/<digest>")
+    def api_timeline_report(digest: str):
+        item = TimelineStore(TIMELINE_DB).get_report(digest)
+        if not item:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(item)
 
     # ---- API routes ----
 

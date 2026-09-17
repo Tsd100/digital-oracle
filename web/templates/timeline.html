@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DO 历史分析时间线</title>
+  <link rel="stylesheet" href="/static/css/timeline.css">
+</head>
+<body>
+  <header class="topbar"><a href="/">← 返回 DO</a><span>DO · 历史分析时间线</span></header>
+  <main class="layout">
+    <section class="hero">
+      <p class="eyebrow">DIGITAL ORACLE / REPORT HISTORY</p>
+      <h1>判断怎样变化？</h1>
+      <p>按主题查看历次报告的结论、主情景概率与数据口径。历史判断仅代表报告当时，不是当前行情。</p>
+      <div class="controls"><label for="subject">分析主题</label><select id="subject"><option value="">全部主题</option><option>有色</option><option>黄金</option><option>白银</option><option>科创50</option><option>半导体</option><option>原油</option><option>创新药</option><option>光模块</option><option>美联储</option></select><span id="count"></span></div>
+    </section>
+    <section class="panel"><h2>逐次变化</h2><div id="changes" class="changes"></div></section>
+    <section class="panel"><h2>报告时间线</h2><div id="timeline" class="timeline"></div></section>
+  </main>
+  <dialog id="report-dialog"><button id="close-dialog" aria-label="关闭">×</button><h2 id="dialog-title"></h2><p id="dialog-source"></p><pre id="dialog-content"></pre></dialog>
+  <script src="/static/js/timeline.js"></script>
+</body>
+</html>

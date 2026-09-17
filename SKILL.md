@@ -245,6 +245,8 @@ Four analysis dimensions:
 
 ### Step 6: Output report
 
+**历史时间线元数据：** 生成新报告时，在正文标题后附一行简短元数据：`分析时间（北京时间）`、`数据截止`、`分析窗口`、`盘中/收盘`、`主题`、`标的及合约`。这帮助历史复盘索引保持可比；正文既有结构不变。报告归档后，可在项目目录运行 `python -m digital_oracle.timeline.cli import` 更新历史索引。用户询问旧报告结论变化时使用 `do-history`，不要把历史比较当作实时行情预测。
+
 **Must follow this structure.** You can adjust the number of layers and wording, but the four main sections (data summary, analysis, probability estimates, conclusion) cannot be omitted or merged into prose paragraphs:
 
 ```markdown

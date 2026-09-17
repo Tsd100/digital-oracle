@@ -1,0 +1,31 @@
+# DO 历史分析时间线使用说明
+
+## 浏览器查看
+
+在项目目录运行 `python web/app.py`，打开 `http://127.0.0.1:5000/timeline`。页面可选有色、黄金、白银、科创50、半导体等主题；点击报告标题可查看原文。服务启动时会读取项目报告、坚果云 DO 归档与 Web 问答历史并刷新本地索引。
+
+## 对话复盘
+
+以后可说“用 do-history 看近三次有色判断怎么变了”。专用 skill 会先更新索引，再按明确的分析时间对比；历史报告中的行情不会作为当前行情使用。
+
+## 命令行
+
+在项目目录运行：
+
+```powershell
+python -m digital_oracle.timeline.cli import
+python -m digital_oracle.timeline.cli compare --subject 有色 --limit 20
+python -m digital_oracle.timeline.cli list --subject 黄金
+```
+
+系统读取报告但不会移动或修改原文。人工校正用完整哈希，例如：
+
+```powershell
+python -m digital_oracle.timeline.cli correct --hash <完整哈希> --field analysis_at --value '"2026-08-26T21:17+08:00"'
+```
+
+校正前请打开原报告核实。无法从正文确认的时间可使用页面显示的“文件名时间”寻找文件，但它不能替代分析时间。需要预测到期后的验证时，还必须提供同标的、同合约、同单位及对应日期的真实行情。
+
+## 当前历史库情况
+
+2026-09-17 的首次导入包含 89 个来源位置，去重后为 80 份报告；75 份至少有一项关键字段待核对。早期报告格式不统一，因此页面的“待核对”提示是正常的，连续变化只比较有明确分析时间和可比口径的记录。
