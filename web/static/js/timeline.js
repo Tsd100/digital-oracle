@@ -35,6 +35,16 @@
     if (/偏多|偏强|上调为|突破加速/.test(item.summary || "")) return "bullish";
     return "review";
   }
+  function reviewReasons(item) {
+    const reasons = [];
+    if (item.subjects.length > 1) reasons.push("联合主题，需按资产拆分结论");
+    if (!item.subjects.length) reasons.push("主题未识别");
+    if (!item.analysis_at) reasons.push("分析时间缺失");
+    if (!item.horizon) reasons.push("预测窗口缺失或不唯一");
+    if (!item.summary) reasons.push("结论未识别");
+    if (!reasons.length && item.extraction_status !== "confirmed") reasons.push("其他字段需核对");
+    return reasons;
+  }
   function circle(attrs, item, className) {
     const el = svgNode("circle", { ...attrs, class: className, tabindex: 0, role: "button", "aria-label": `${item.title}，点击查看原文` });
     el.append(svgNode("title", {}, `${item.title}\n${item.analysis_at || "时间待核对"}`));
@@ -55,7 +65,7 @@
     if (!dated.length) { reportChart.append(node("p", "empty chart-placeholder", "该主题没有明确分析时间的报告。")); return; }
     const { width, x } = geometry(dated);
     const svg = svgNode("svg", { viewBox: `0 0 ${width} 230`, width, height: 230, "aria-label": `${subject.value}报告节点图` });
-    for (const [name, y] of [["偏多", 57], ["待核对", 112], ["偏空", 167]]) {
+    for (const [name, y] of [["偏多", 57], ["暂不可比", 112], ["偏空", 167]]) {
       svg.append(svgNode("line", { x1: 78, y1: y, x2: width - 30, y2: y, class: "grid" }));
       svg.append(svgNode("text", { x: 16, y: y + 4, class: "chart-label" }, name));
     }
@@ -124,8 +134,8 @@
     const res = await fetch(`/api/timeline?subject=${encodeURIComponent(selected)}`);
     const data = await res.json();
     count.textContent = selected
-      ? `${data.reports.length} 份匹配报告 · 当前主题 ${data.counts.matching_needs_review} 份待核对（全库 ${data.counts.needs_review} 份）`
-      : `${data.reports.length} 份报告 · ${data.counts.needs_review} 份待核对`;
+      ? `${data.reports.length} 份匹配报告 · 联合分析 ${data.counts.matching_joint} 份 · 单主题需补字段 ${data.counts.matching_single_needs_review} 份（全库待整理 ${data.counts.needs_review} 份）`
+      : `${data.reports.length} 份报告 · ${data.counts.needs_review} 份待整理`;
     const dated = data.reports.filter((item) => item.analysis_at).sort((a, b) => a.analysis_at.localeCompare(b.analysis_at));
     const unknown = data.reports.filter((item) => !item.analysis_at).sort((a, b) => (b.source_time_hint || "").localeCompare(a.source_time_hint || ""));
     document.querySelector("#stat-reports").textContent = data.reports.length;
@@ -145,8 +155,11 @@
       heading.addEventListener("click", () => showReport(item.hash));
       const summary = node("p", "summary", item.summary || "结论待核对；点击查看原报告");
       const detail = node("div", "detail", `${item.subjects.join(" / ") || "主题待核对"} · ${item.horizon || "窗口待核对"} · ${item.market_session === "intraday" ? "盘中" : item.market_session === "close" ? "收盘" : "口径待核对"} · ${item.main_probability == null ? "概率待核对" : `主情景 ${item.main_probability}%`}`);
-      const quality = node("span", item.extraction_status === "confirmed" ? "quality confirmed" : "quality review", item.extraction_status === "confirmed" ? "已识别" : "待核对");
+      const joint = item.subjects.length > 1;
+      const ready = !joint && item.extraction_status === "confirmed";
+      const quality = node("span", ready ? "quality confirmed" : "quality review", joint ? "联合分析" : ready ? "字段已识别" : "需补字段");
       card.append(date, heading, summary, detail, quality);
+      if (!ready) card.append(node("p", "review-reasons", reviewReasons(item).join("；")));
       timeline.append(card);
     }
     if (!rows.length) timeline.append(node("p", "empty", "暂无匹配报告。"));

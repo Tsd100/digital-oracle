@@ -4,8 +4,17 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
 try {
   await page.goto('http://127.0.0.1:5000/timeline?subject=原油');
-  await page.locator('#count').getByText(/当前主题 \d+ 份待核对（全库 \d+ 份）/).waitFor();
+  await page.locator('#count').getByText(/联合分析 \d+ 份 · 单主题需补字段 \d+ 份/).waitFor();
   await page.goto('http://127.0.0.1:5000/timeline?subject=黄金');
+  await page.locator('#count').getByText(/联合分析 \d+ 份 · 单主题需补字段 \d+ 份/).waitFor();
+  await page.locator('#report-list').evaluate((el) => { el.open = true; });
+  await page.locator('.report-card').first().waitFor();
+  const countText = await page.locator('#count').textContent();
+  const [, jointText, gapText] = countText.match(/联合分析 (\d+) 份 · 单主题需补字段 (\d+) 份/) || [];
+  const jointCards = await page.locator('.report-card .quality.review', { hasText: '联合分析' }).count();
+  const gapCards = await page.locator('.report-card .quality.review', { hasText: '需补字段' }).count();
+  if (!jointCards || !gapCards || jointCards !== Number(jointText) || gapCards !== Number(gapText)) throw new Error(`gold joint=${jointCards} gaps=${gapCards}`);
+  if (!await page.locator('.review-reasons').first().textContent()) throw new Error('missing review reason');
   await page.locator('.report-node').first().waitFor();
   const goldNodes = await page.locator('.report-node').count();
   const goldSegments = await page.locator('.prob-segment').count();

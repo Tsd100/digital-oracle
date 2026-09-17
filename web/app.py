@@ -142,6 +142,11 @@ def create_app() -> Flask:
             changes = []
         counts = store.counts()
         counts["matching_needs_review"] = sum(row["extraction_status"] != "confirmed" for row in rows)
+        counts["matching_joint"] = sum(len(row["subjects"]) > 1 for row in rows)
+        counts["matching_single_needs_review"] = sum(
+            len(row["subjects"]) == 1 and row["extraction_status"] != "confirmed" for row in rows
+        )
+        counts["matching_ready"] = sum(len(row["subjects"]) == 1 and row["extraction_status"] == "confirmed" for row in rows)
         return jsonify({"reports": rows, "changes": changes, "counts": counts})
 
     @app.route("/api/timeline/report/<digest>")

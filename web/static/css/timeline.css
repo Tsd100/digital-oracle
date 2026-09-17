@@ -54,6 +54,7 @@ details#report-list > summary, details#change-list > summary { cursor: pointer; 
 .quality { display: inline-block; margin-top: 10px; border-radius: 20px; padding: 4px 9px; font-size: 11px; }
 .quality.confirmed { color: #8be2b4; background: #164b3c; }
 .quality.review { color: #ffd49c; background: #55402b; }
+.review-reasons { margin: 8px 0 0; color: #b9c8df; font-size: 12px; line-height: 1.5; }
 .change-card strong { color: #edf4ff; }
 .change-card p { margin: 7px 0 0; color: #bdcce2; }
 .change-card .warning { color: #ffd49c; }
