@@ -13,7 +13,7 @@ try {
   const segments = await page.locator('.prob-segment').count();
   if (segments !== 1) throw new Error(`nonferrous segments=${segments}`);
   await page.locator('.report-node').first().click();
-  if (!(await page.locator('#report-dialog').evaluate((el) => el.open))) throw new Error('report dialog did not open');
+  await page.locator('#report-dialog[open]').waitFor();
   console.log(`visual checks passed: gold nodes=${goldNodes}, gold lines=0, nonferrous lines=${segments}`);
 } finally {
   await browser.close();
