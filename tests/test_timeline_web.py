@@ -18,4 +18,22 @@ def test_timeline_page_and_api_show_indexed_report(tmp_path, monkeypatch):
     response = client.get("/api/timeline?subject=有色")
     assert response.status_code == 200
     assert response.json["reports"][0]["hash"] == digest
+    assert response.json["counts"]["matching_needs_review"] == 0
     assert "有色走势" in client.get(f"/api/timeline/report/{digest}").json["content"]
+
+
+def test_timeline_counts_are_scoped_to_selected_subject_and_corrections(tmp_path, monkeypatch):
+    import web.app as web_app
+    db = tmp_path / "timeline.db"
+    store = TimelineStore(db)
+    pending = store.add("a", "# 原油走势\n\n## 结论\n> 偏弱。")
+    store.add("b", "# 黄金走势\n\n## 结论\n> 偏强。")
+    monkeypatch.setattr(web_app, "TIMELINE_DB", db, raising=False)
+    client = create_app().test_client()
+    counts = client.get("/api/timeline?subject=原油").json["counts"]
+    assert counts["matching_needs_review"] == 1
+    assert counts["needs_review"] == 2
+    store.correct(pending, "extraction_status", "confirmed")
+    counts = client.get("/api/timeline?subject=原油").json["counts"]
+    assert counts["matching_needs_review"] == 0
+    assert counts["needs_review"] == 1

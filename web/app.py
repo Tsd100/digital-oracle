@@ -140,7 +140,9 @@ def create_app() -> Flask:
                         "comparability": p["comparability"], "session_changed": p["session_changed"]} for p in pairs]
         else:
             changes = []
-        return jsonify({"reports": rows, "changes": changes, "counts": store.counts()})
+        counts = store.counts()
+        counts["matching_needs_review"] = sum(row["extraction_status"] != "confirmed" for row in rows)
+        return jsonify({"reports": rows, "changes": changes, "counts": counts})
 
     @app.route("/api/timeline/report/<digest>")
     def api_timeline_report(digest: str):

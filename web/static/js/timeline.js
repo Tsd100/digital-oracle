@@ -123,7 +123,9 @@
     const selected = subject.value;
     const res = await fetch(`/api/timeline?subject=${encodeURIComponent(selected)}`);
     const data = await res.json();
-    count.textContent = `${data.reports.length} 份匹配报告 · ${data.counts.needs_review} 份全库待核对`;
+    count.textContent = selected
+      ? `${data.reports.length} 份匹配报告 · 当前主题 ${data.counts.matching_needs_review} 份待核对（全库 ${data.counts.needs_review} 份）`
+      : `${data.reports.length} 份报告 · ${data.counts.needs_review} 份待核对`;
     const dated = data.reports.filter((item) => item.analysis_at).sort((a, b) => a.analysis_at.localeCompare(b.analysis_at));
     const unknown = data.reports.filter((item) => !item.analysis_at).sort((a, b) => (b.source_time_hint || "").localeCompare(a.source_time_hint || ""));
     document.querySelector("#stat-reports").textContent = data.reports.length;

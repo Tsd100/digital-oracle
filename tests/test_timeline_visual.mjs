@@ -3,6 +3,8 @@ import { chromium } from 'playwright';
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
 try {
+  await page.goto('http://127.0.0.1:5000/timeline?subject=原油');
+  await page.locator('#count').getByText(/当前主题 \d+ 份待核对（全库 \d+ 份）/).waitFor();
   await page.goto('http://127.0.0.1:5000/timeline?subject=黄金');
   await page.locator('.report-node').first().waitFor();
   const goldNodes = await page.locator('.report-node').count();

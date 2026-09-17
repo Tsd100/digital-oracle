@@ -82,3 +82,30 @@ def test_new_report_metadata_is_extracted():
     assert item["analysis_at"] == "2026-09-17T14:00+08:00"
     assert "2026-09-17 13:55" in item["data_as_of"]
     assert item["market_session"] == "intraday"
+
+
+def test_markdown_confirmed_time_and_oil_title_are_recognized():
+    report = "# 石油走势：DO 分析\n\n**确认时间：**2026-09-03 14:41（北京时间）\n\n## 结论\n> 石油偏弱，黄金只是对照。"
+    item = extract_report(report)
+    assert item["analysis_at"] == "2026-09-03T14:41+08:00"
+    assert item["subjects"] == ["原油"]
+
+
+def test_broad_title_does_not_inherit_incidental_asset_from_conclusion():
+    report = "# 美伊局势研判\n\n## 结论\n> 黄金和原油可能受到影响。"
+    assert extract_report(report)["subjects"] == []
+
+
+def test_explicit_single_window_is_kept_but_multiple_windows_need_review():
+    single = "# 原油走势\n\n确认时间：2026-09-03 14:41\n核心问题：原油近期（1-3个月）的走势。\n\n## 结论\n> 偏弱。"
+    mixed = "# 原油走势\n\n确认时间：2026-09-03 14:41\n核心问题：原油近期（1-3个月）的走势。\n\n## 情景概率\n### 未来1-5个交易日\n\n## 结论\n> 偏弱。"
+    assert extract_report(single)["horizon"] == "1—3月"
+    assert extract_report(mixed)["horizon"] is None
+    assert extract_report(mixed)["extraction_status"] == "needs_review"
+
+
+def test_short_and_swing_windows_are_not_mislabeled_as_one_forecast():
+    report = "# 石油走势\n\n确认北京时间：2026-08-24 14:46\n- 短线（1—5个交易日）：偏强。\n- 波段（2—8周）：震荡。\n\n## 结论\n> 中短期偏多。"
+    item = extract_report(report)
+    assert item["horizon"] is None
+    assert item["extraction_status"] == "needs_review"

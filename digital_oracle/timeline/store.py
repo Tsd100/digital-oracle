@@ -101,9 +101,11 @@ class TimelineStore:
 
     def counts(self) -> dict:
         with self.connect() as conn:
-            return {"reports": conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0],
+            rows = conn.execute("SELECT hash, extracted FROM reports").fetchall()
+            needs_review = sum(self._row(conn, row)["extraction_status"] != "confirmed" for row in rows)
+            return {"reports": len(rows),
                     "sources": conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0],
-                    "needs_review": conn.execute("SELECT COUNT(*) FROM reports WHERE json_extract(extracted, '$.extraction_status') != 'confirmed'").fetchone()[0]}
+                    "needs_review": needs_review}
 
 
 def import_sources(db_path: Path | str = DEFAULT_DB, folders: list[Path] | None = None,
