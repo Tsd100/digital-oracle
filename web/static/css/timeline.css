@@ -11,7 +11,39 @@ h2 { font-size: 20px; margin: 0 0 20px; }
 .hero p:not(.eyebrow) { color: #aab9d4; max-width: 720px; line-height: 1.7; }
 .controls { margin-top: 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: #aab9d4; }
 select { background: #16223a; border: 1px solid #45618f; border-radius: 8px; color: #f5f8ff; padding: 10px 14px; font: inherit; }
+.visual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+.stat { display: flex; flex-direction: column; gap: 8px; padding: 17px 20px; border: 1px solid #2c4161; border-radius: 12px; background: #172740; }
+.stat span { color: #9eb0ca; font-size: 13px; }
+.stat strong { color: #eff5ff; font-size: 27px; font-variant-numeric: tabular-nums; }
 .panel { background: #111b2e; border: 1px solid #2c4161; border-radius: 16px; padding: 24px; margin-bottom: 22px; }
+.section-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.section-heading h2 { margin-bottom: 5px; }
+.section-heading .eyebrow { margin: 0 0 5px; }
+.small-label, .chart-note { color: #9aacc8; font-size: 13px; }
+.chart-note { line-height: 1.6; margin: 6px 0 15px; }
+.chart-scroll { overflow-x: auto; overflow-y: hidden; min-height: 195px; border-radius: 10px; background: #0f1a2d; border: 1px solid #233754; }
+.chart-scroll svg { display: block; max-width: none; }
+.chart-scroll .axis { stroke: #3a4f70; stroke-width: 1; }
+.chart-scroll .grid { stroke: #283a55; stroke-width: 1; stroke-dasharray: 3 5; }
+.chart-scroll text { fill: #9fb2cf; font: 12px "Microsoft YaHei", system-ui, sans-serif; }
+.chart-scroll .chart-label { fill: #c7d5ec; font-size: 13px; }
+.report-node, .prob-point { cursor: pointer; }
+.report-node:focus, .prob-point:focus { outline: none; stroke: #fff; stroke-width: 3; }
+.report-node:hover, .prob-point:hover { stroke: #fff; stroke-width: 3; }
+.prob-segment { stroke: #68d5b1; stroke-width: 3; stroke-linecap: round; }
+.legend { display: flex; gap: 13px; flex-wrap: wrap; font-size: 12px; color: #b8c9df; }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.bullish { background: #5cddac; }
+.bearish { background: #ff918f; }
+.review { background: #8496ae; }
+.undated { margin-top: 13px; color: #aab9d4; font-size: 13px; }
+.undated summary { cursor: pointer; }
+.undated button { display: inline-block; margin: 9px 7px 0 0; padding: 7px 10px; border-radius: 7px; border: 1px solid #415778; background: #1a2b46; color: #d5e0f0; cursor: pointer; }
+details#report-list > summary, details#change-list > summary { cursor: pointer; color: #dbe7fb; font-size: 17px; font-weight: 600; }
+#report-list-count { color: #9aaccc; font-size: 13px; font-weight: 400; }
+#change-list-count { color: #9aaccc; font-size: 13px; font-weight: 400; }
+#report-list .timeline, #change-list .changes { margin-top: 18px; }
 .changes, .timeline { display: grid; gap: 12px; }
 .report-card, .change-card { position: relative; border: 1px solid #2d4160; border-radius: 11px; padding: 17px 19px; background: #16243b; }
 .date { font-size: 12px; color: #83a9de; margin-bottom: 7px; }
@@ -30,4 +62,4 @@ dialog::backdrop { background: #000b; }
 #close-dialog { float: right; color: #fff; background: none; border: 0; font-size: 26px; cursor: pointer; }
 #dialog-source { color: #8fa5c6; font-size: 12px; overflow-wrap: anywhere; }
 #dialog-content { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 "Cascadia Code", "Microsoft YaHei", monospace; }
-@media(max-width: 640px) { .layout { padding: 15px 12px 50px; } .panel { padding: 16px; } .topbar { padding: 16px; } }
+@media(max-width: 640px) { .layout { padding: 15px 12px 50px; } .panel { padding: 16px; } .topbar { padding: 16px; } .visual-grid { gap: 7px; } .stat { padding: 12px; } .stat strong { font-size: 22px; } .section-heading { flex-direction: column; gap: 6px; } }
