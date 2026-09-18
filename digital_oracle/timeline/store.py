@@ -83,7 +83,8 @@ class TimelineStore:
             item[override["field"]] = json.loads(override["value"])
             corrected_fields.add(override["field"])
         if corrected_fields & {"summary", "subjects"}:
-            item["subject_judgments"] = subject_judgments(item.get("summary"), item.get("subjects", []), item.get("summary_line"))
+            content = row["content"] if "content" in row.keys() else conn.execute("SELECT content FROM reports WHERE hash=?", (row["hash"],)).fetchone()[0]
+            item["subject_judgments"] = subject_judgments(item.get("summary"), item.get("subjects", []), item.get("summary_line"), content)
         return item
 
     def list_reports(self, subject: str | None = None, limit: int = 1000) -> list[dict]:

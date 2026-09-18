@@ -33,7 +33,7 @@
     return item.subject_judgments?.[subject.value]?.direction || "unknown";
   }
   function directionLabel(direction) {
-    return { bullish: "偏多", bearish: "偏空", neutral: "震荡或修复", mixed: "短中期分歧", unknown: "未判定" }[direction] || "未判定";
+    return { bullish: "偏多", bearish: "偏空", neutral: "震荡或修复", mixed: "短中期分歧", unknown: "未判定", not_applicable: "需按会议比较" }[direction] || "未判定";
   }
   function reviewReasons(item) {
     const reasons = [];
@@ -64,20 +64,22 @@
     if (!subject.value) { reportChart.append(node("p", "empty chart-placeholder", "选择一个主题查看报告节点。")); return; }
     if (!dated.length) { reportChart.append(node("p", "empty chart-placeholder", "该主题没有明确分析时间的报告。")); return; }
     const { width, x } = geometry(dated);
-    const svg = svgNode("svg", { viewBox: `0 0 ${width} 292`, width, height: 292, "aria-label": `${subject.value}判断节点图` });
-    const positions = { bullish: 45, neutral: 91, mixed: 137, bearish: 183, unknown: 229 };
-    const colors = { bullish: "#5cddac", neutral: "#e6c776", mixed: "#b6a3f5", bearish: "#ff918f", unknown: "#8496ae" };
+    const policy = subject.value === "美联储";
+    const chartHeight = policy ? 230 : 292;
+    const svg = svgNode("svg", { viewBox: `0 0 ${width} ${chartHeight}`, width, height: chartHeight, "aria-label": `${subject.value}判断节点图` });
+    const positions = policy ? { not_applicable: 112 } : { bullish: 45, neutral: 91, mixed: 137, bearish: 183, unknown: 229 };
+    const colors = { bullish: "#5cddac", neutral: "#e6c776", mixed: "#b6a3f5", bearish: "#ff918f", unknown: "#8496ae", not_applicable: "#91b9fc" };
     for (const [direction, y] of Object.entries(positions)) {
       svg.append(svgNode("line", { x1: 78, y1: y, x2: width - 30, y2: y, class: "grid" }));
-      svg.append(svgNode("text", { x: 12, y: y + 4, class: "chart-label" }, directionLabel(direction)));
+      svg.append(svgNode("text", { x: 12, y: y + 4, class: "chart-label" }, policy ? "按会议比较" : directionLabel(direction)));
     }
     dated.forEach((item, index) => {
       const direction = stance(item);
-      const evidence = item.subject_judgments?.[subject.value]?.evidence || "未找到该主题的独立结论";
-      svg.append(circle({ cx: x(index), cy: positions[direction], r: 10, fill: colors[direction], "data-hash": item.hash, "data-direction": direction }, item, "report-node", `${directionLabel(direction)}：${evidence}`));
-      svg.append(svgNode("text", { x: x(index), y: 274, "text-anchor": "middle" }, item.analysis_at.slice(5, 16).replace("T", " ")));
+      const evidence = item.subject_judgments?.[subject.value]?.evidence || (direction === "not_applicable" ? "需按议息会议和预测期限比较加息概率" : "未找到该主题的独立结论");
+      svg.append(circle({ cx: x(index), cy: positions[direction] ?? positions.unknown ?? positions.not_applicable, r: 10, fill: colors[direction] || colors.unknown, "data-hash": item.hash, "data-direction": direction }, item, "report-node", `${directionLabel(direction)}：${evidence}`));
+      svg.append(svgNode("text", { x: x(index), y: policy ? 208 : 274, "text-anchor": "middle" }, item.analysis_at.slice(5, 16).replace("T", " ")));
     });
-    svg.append(svgNode("line", { x1: 78, y1: 250, x2: width - 30, y2: 250, class: "axis" }));
+    svg.append(svgNode("line", { x1: 78, y1: policy ? 187 : 250, x2: width - 30, y2: policy ? 187 : 250, class: "axis" }));
     reportChart.append(svg);
     if (unknown.length) {
       const details = node("details", "", "");
@@ -134,6 +136,9 @@
     const selected = subject.value;
     const res = await fetch(`/api/timeline?subject=${encodeURIComponent(selected)}`);
     const data = await res.json();
+    document.querySelector("#direction-note").textContent = selected === "美联储"
+      ? "美联储报告讨论不同议息会议的加息概率，不能画在资产偏多偏空轴上；需按会议和预测期限分别比较。点击节点查看原文。"
+      : "节点读取当前主题在原报告中的结论；方向与概率是否可比是两回事。短中期观点冲突时标为分歧。点按分析时间排序，间距不代表日历天数；点击可查看原文。";
     count.textContent = selected
       ? `${data.reports.length} 份匹配报告 · 联合分析 ${data.counts.matching_joint} 份 · 单主题需补字段 ${data.counts.matching_single_needs_review} 份（全库待整理 ${data.counts.needs_review} 份）`
       : `${data.reports.length} 份报告 · ${data.counts.needs_review} 份待整理`;
@@ -141,6 +146,7 @@
     const unknown = data.reports.filter((item) => !item.analysis_at).sort((a, b) => (b.source_time_hint || "").localeCompare(a.source_time_hint || ""));
     document.querySelector("#stat-reports").textContent = data.reports.length;
     document.querySelector("#stat-dated").textContent = dated.length;
+    document.querySelector("#stat-direction").textContent = dated.filter((item) => !["unknown", "not_applicable"].includes(stance(item))).length;
     document.querySelector("#stat-segments").textContent = data.changes.filter((pair) => pair.main_probability_delta !== null).length;
     document.querySelector("#report-list-count").textContent = `（${data.reports.length} 份）`;
     document.querySelector("#change-list-count").textContent = `（${data.changes.length} 组）`;
@@ -156,7 +162,7 @@
       heading.addEventListener("click", () => showReport(item.hash));
       const judgment = item.subject_judgments?.[selected];
       const summary = node("p", "summary", judgment?.evidence ? judgment.evidence : item.summary || "结论待核对；点击查看原报告");
-      if (selected) card.append(node("p", "subject-judgment", `${selected}判断：${directionLabel(judgment?.direction)}${judgment?.source_line ? ` · 原文第 ${judgment.source_line} 行` : ""}`));
+      if (selected) card.append(node("p", "subject-judgment", `${selected}判断：${directionLabel(judgment?.direction)}${judgment?.source_line ? ` · 原文第 ${judgment.source_line} 行` : ""}${judgment?.direction === "unknown" ? " · 原文未给出明确的单项方向" : ""}`));
       const detail = node("div", "detail", `${item.subjects.join(" / ") || "主题待核对"} · ${item.horizon || "窗口待核对"} · ${item.market_session === "intraday" ? "盘中" : item.market_session === "close" ? "收盘" : "口径待核对"} · ${item.main_probability == null ? "概率待核对" : `主情景 ${item.main_probability}%`}`);
       const joint = item.subjects.length > 1;
       const ready = !joint && item.extraction_status === "confirmed";

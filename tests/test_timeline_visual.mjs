@@ -24,12 +24,25 @@ try {
   const goldMixed = await page.locator('.report-node[data-direction="mixed"]').count();
   if (goldBullish < 2 || goldBearish < 2 || goldMixed < 2) throw new Error(`gold directions bullish=${goldBullish} bearish=${goldBearish} mixed=${goldMixed}`);
   if (!await page.locator('.report-card .subject-judgment').first().textContent()) throw new Error('missing asset-specific judgment');
+  await page.goto('http://127.0.0.1:5000/timeline?subject=白银');
+  await page.locator('.report-node').first().waitFor();
+  const silverResolved = await page.locator('.report-node:not([data-direction="unknown"])').count();
+  if (silverResolved < 6) throw new Error(`silver resolved=${silverResolved}`);
+  if (Number(await page.locator('#stat-direction').textContent()) !== silverResolved) throw new Error('direction stat does not match chart');
+  await page.goto('http://127.0.0.1:5000/timeline?subject=科创50');
+  await page.locator('.report-node').first().waitFor();
+  const starResolved = await page.locator('.report-node:not([data-direction="unknown"])').count();
+  if (starResolved < 3) throw new Error(`STAR 50 resolved=${starResolved}`);
   await page.goto('http://127.0.0.1:5000/timeline?subject=有色');
   await page.locator('.prob-segment').first().waitFor({ state: 'attached' });
   const segments = await page.locator('.prob-segment').count();
   if (segments !== 1) throw new Error(`nonferrous segments=${segments}`);
   await page.locator('.report-node').first().click();
   await page.locator('#report-dialog[open]').waitFor();
+  await page.goto('http://127.0.0.1:5000/timeline?subject=美联储');
+  await page.locator('.report-node').first().waitFor();
+  if (await page.locator('.report-node:not([data-direction="not_applicable"])').count()) throw new Error('policy report mapped to asset stance');
+  if (!((await page.locator('#direction-note').textContent()) || '').includes('议息会议')) throw new Error('missing policy horizon explanation');
   console.log(`visual checks passed: gold nodes=${goldNodes}, gold lines=0, nonferrous lines=${segments}`);
 } finally {
   await browser.close();

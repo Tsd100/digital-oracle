@@ -11,7 +11,7 @@ h2 { font-size: 20px; margin: 0 0 20px; }
 .hero p:not(.eyebrow) { color: #aab9d4; max-width: 720px; line-height: 1.7; }
 .controls { margin-top: 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: #aab9d4; }
 select { background: #16223a; border: 1px solid #45618f; border-radius: 8px; color: #f5f8ff; padding: 10px 14px; font: inherit; }
-.visual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+.visual-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
 .stat { display: flex; flex-direction: column; gap: 8px; padding: 17px 20px; border: 1px solid #2c4161; border-radius: 12px; background: #172740; }
 .stat span { color: #9eb0ca; font-size: 13px; }
 .stat strong { color: #eff5ff; font-size: 27px; font-variant-numeric: tabular-nums; }
@@ -66,4 +66,4 @@ dialog::backdrop { background: #000b; }
 #close-dialog { float: right; color: #fff; background: none; border: 0; font-size: 26px; cursor: pointer; }
 #dialog-source { color: #8fa5c6; font-size: 12px; overflow-wrap: anywhere; }
 #dialog-content { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 "Cascadia Code", "Microsoft YaHei", monospace; }
-@media(max-width: 640px) { .layout { padding: 15px 12px 50px; } .panel { padding: 16px; } .topbar { padding: 16px; } .visual-grid { gap: 7px; } .stat { padding: 12px; } .stat strong { font-size: 22px; } .section-heading { flex-direction: column; gap: 6px; } }
+@media(max-width: 640px) { .layout { padding: 15px 12px 50px; } .panel { padding: 16px; } .topbar { padding: 16px; } .visual-grid { grid-template-columns: repeat(2, 1fr); gap: 7px; } .stat { padding: 12px; } .stat strong { font-size: 22px; } .section-heading { flex-direction: column; gap: 6px; } }

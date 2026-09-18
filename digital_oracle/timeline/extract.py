@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from .judgment import subject_judgments
 
 CN = timezone(timedelta(hours=8))
-PARSER_VERSION = 3
+PARSER_VERSION = 4
 
 TOPIC_PATTERNS = {
     "有色": (r"有色", r"non.?ferrous"),
@@ -97,7 +97,7 @@ def extract_report(text: str) -> dict:
         "title": title, "subjects": subjects, "analysis_at": _analysis_time(text),
         "data_as_of": data_note, "market_session": session, "horizon": horizon,
         "summary": summary, "summary_line": summary_line,
-        "subject_judgments": subject_judgments(summary, subjects, summary_line),
+        "subject_judgments": subject_judgments(summary, subjects, summary_line, text),
         "main_probability": scenarios[0]["probability"] if scenarios else None,
         "scenarios": scenarios, "thresholds": threshold_rows, "extraction_status": quality,
         "parser_version": PARSER_VERSION,
