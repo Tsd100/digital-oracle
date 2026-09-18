@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from .extract import extract_report
+from .judgment import subject_judgments
 
 DEFAULT_DB = Path(__file__).resolve().parents[2] / "web" / "timeline.db"
 DEFAULT_ARCHIVE = Path(r"D:\坚果云同步\WS\Digital-Oracle-Reports")
@@ -77,8 +78,12 @@ class TimelineStore:
         item["sources"] = [r[0] for r in conn.execute("SELECT source_key FROM sources WHERE report_hash=? ORDER BY source_kind, source_key", (row["hash"],))]
         hints = [re.search(r"(20\d{2}-\d{2}-\d{2})[_-](\d{2})-(\d{2})", Path(source).name) for source in item["sources"]]
         item["source_time_hint"] = next((f"{m.group(1)} {m.group(2)}:{m.group(3)}" for m in hints if m), None)
+        corrected_fields = set()
         for override in conn.execute("SELECT field, value FROM corrections WHERE report_hash=?", (row["hash"],)):
             item[override["field"]] = json.loads(override["value"])
+            corrected_fields.add(override["field"])
+        if corrected_fields & {"summary", "subjects"}:
+            item["subject_judgments"] = subject_judgments(item.get("summary"), item.get("subjects", []), item.get("summary_line"))
         return item
 
     def list_reports(self, subject: str | None = None, limit: int = 1000) -> list[dict]:

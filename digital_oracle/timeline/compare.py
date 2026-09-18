@@ -45,10 +45,11 @@ def compare_subject(reports: list[dict], subject: str) -> dict:
         comparable = not reasons
         previous, current = old.get("main_probability"), new.get("main_probability")
         delta = current - previous if comparable and previous is not None and current is not None else None
-        a, b = _strength(old.get("summary")), _strength(new.get("summary"))
+        old_judgment = old.get("subject_judgments", {}).get(subject)
+        new_judgment = new.get("subject_judgments", {}).get(subject)
+        a = old_judgment.get("score") if old_judgment is not None else _strength(old.get("summary"))
+        b = new_judgment.get("score") if new_judgment is not None else _strength(new.get("summary"))
         judgment = "无法判断" if a is None or b is None else "上调" if b > a else "下调" if b < a else "维持"
-        if not comparable:
-            judgment = "无法判断"
         pairs.append({
             "old": old, "new": new, "judgment_change": judgment,
             "main_probability_delta": delta, "comparability": "；".join(reasons) if reasons else "可比较",

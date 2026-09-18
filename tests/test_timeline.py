@@ -76,6 +76,14 @@ def test_correction_survives_reimport(tmp_path):
     assert TimelineStore(db).list_reports("黄金")[0]["analysis_at"] == "2026-08-01T10:00+08:00"
 
 
+def test_corrected_summary_updates_subject_direction(tmp_path):
+    db = tmp_path / "timeline.db"
+    store = TimelineStore(db)
+    digest = store.add("gold", "# 黄金走势\n\n## 结论\n> 黄金偏多。")
+    store.correct(digest, "summary", "黄金偏空。")
+    assert store.list_reports("黄金")[0]["subject_judgments"]["黄金"]["direction"] == "bearish"
+
+
 def test_new_report_metadata_is_extracted():
     report = "# 黄金走势\n\n分析时间（北京时间）：2026-09-17 14:00；数据截止：2026-09-17 13:55；分析窗口：未来 1—4 周；盘中/收盘：盘中；主题：黄金；标的及合约：GC=F。\n\n## 结论\n> 黄金短线偏多。"
     item = extract_report(report)
@@ -109,3 +117,29 @@ def test_short_and_swing_windows_are_not_mislabeled_as_one_forecast():
     item = extract_report(report)
     assert item["horizon"] is None
     assert item["extraction_status"] == "needs_review"
+
+
+def test_joint_report_has_separate_direction_without_comparable_probability():
+    report = "# 黄金与白银走势\n\n确认时间：2026-08-22 19:29\n\n## 结论\n> 黄金未来1—3个月震荡偏强；白银短线偏弱。"
+    item = extract_report(report)
+    assert item["subject_judgments"]["黄金"]["direction"] == "bullish"
+    assert item["subject_judgments"]["白银"]["direction"] == "bearish"
+    assert "黄金" in item["subject_judgments"]["黄金"]["evidence"]
+    assert item["extraction_status"] == "needs_review"
+
+
+def test_mixed_horizons_and_relative_ranking_do_not_force_a_direction():
+    mixed = extract_report("# 黄金与白银走势\n\n## 结论\n> 黄金：中期上升趋势尚未破坏，短线进入回撤确认；白银偏多。")
+    ranked = extract_report("# 黄金与白银走势\n\n## 结论\n> 黄金最稳、白银最有弹性。组合仍偏多。")
+    assert mixed["subject_judgments"]["黄金"]["direction"] == "mixed"
+    assert ranked["subject_judgments"]["黄金"]["direction"] == "unknown"
+    structure = extract_report("# 黄金与白银走势\n\n## 结论\n> 黄金：中期多头结构仍在，但短线延续弱势。")
+    assert structure["subject_judgments"]["黄金"]["direction"] == "mixed"
+
+
+def test_subject_direction_changes_even_when_probabilities_are_not_comparable():
+    first = extract_report("# 黄金与白银走势\n确认时间：2026-08-22 19:29\n\n## 结论\n> 黄金偏强；白银震荡。")
+    second = extract_report("# 黄金与白银走势\n确认时间：2026-08-23 19:29\n\n## 结论\n> 黄金短线偏弱；白银震荡。")
+    result = compare_subject([first, second], "黄金")
+    assert result["pairs"][0]["judgment_change"] == "下调"
+    assert result["pairs"][0]["main_probability_delta"] is None

@@ -19,6 +19,11 @@ try {
   const goldNodes = await page.locator('.report-node').count();
   const goldSegments = await page.locator('.prob-segment').count();
   if (goldNodes < 2 || goldSegments !== 0) throw new Error(`gold nodes=${goldNodes} segments=${goldSegments}`);
+  const goldBullish = await page.locator('.report-node[data-direction="bullish"]').count();
+  const goldBearish = await page.locator('.report-node[data-direction="bearish"]').count();
+  const goldMixed = await page.locator('.report-node[data-direction="mixed"]').count();
+  if (goldBullish < 2 || goldBearish < 2 || goldMixed < 2) throw new Error(`gold directions bullish=${goldBullish} bearish=${goldBearish} mixed=${goldMixed}`);
+  if (!await page.locator('.report-card .subject-judgment').first().textContent()) throw new Error('missing asset-specific judgment');
   await page.goto('http://127.0.0.1:5000/timeline?subject=有色');
   await page.locator('.prob-segment').first().waitFor({ state: 'attached' });
   const segments = await page.locator('.prob-segment').count();

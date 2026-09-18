@@ -35,6 +35,8 @@ select { background: #16223a; border: 1px solid #45618f; border-radius: 8px; col
 .legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .bullish { background: #5cddac; }
+.neutral { background: #e6c776; }
+.mixed { background: #b6a3f5; }
 .bearish { background: #ff918f; }
 .review { background: #8496ae; }
 .undated { margin-top: 13px; color: #aab9d4; font-size: 13px; }
@@ -50,6 +52,7 @@ details#report-list > summary, details#change-list > summary { cursor: pointer; 
 .report-title { padding: 0; border: 0; background: none; color: #f4f7ff; font: inherit; font-size: 17px; font-weight: 600; text-align: left; cursor: pointer; }
 .report-title:hover { color: #99c5ff; }
 .summary { margin: 10px 0; line-height: 1.6; color: #d1dbeb; }
+.subject-judgment { margin: 10px 0 0; color: #a9c7f3; font-size: 13px; }
 .detail, .empty { color: #92a7c3; font-size: 13px; }
 .quality { display: inline-block; margin-top: 10px; border-radius: 20px; padding: 4px 9px; font-size: 11px; }
 .quality.confirmed { color: #8be2b4; background: #164b3c; }

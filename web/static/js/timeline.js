@@ -30,10 +30,10 @@
     return el;
   }
   function stance(item) {
-    if (item.extraction_status !== "confirmed" || item.subjects.length !== 1) return "review";
-    if (/偏空|转弱|回撤风险上升/.test(item.summary || "")) return "bearish";
-    if (/偏多|偏强|上调为|突破加速/.test(item.summary || "")) return "bullish";
-    return "review";
+    return item.subject_judgments?.[subject.value]?.direction || "unknown";
+  }
+  function directionLabel(direction) {
+    return { bullish: "偏多", bearish: "偏空", neutral: "震荡或修复", mixed: "短中期分歧", unknown: "未判定" }[direction] || "未判定";
   }
   function reviewReasons(item) {
     const reasons = [];
@@ -45,9 +45,9 @@
     if (!reasons.length && item.extraction_status !== "confirmed") reasons.push("其他字段需核对");
     return reasons;
   }
-  function circle(attrs, item, className) {
+  function circle(attrs, item, className, hint) {
     const el = svgNode("circle", { ...attrs, class: className, tabindex: 0, role: "button", "aria-label": `${item.title}，点击查看原文` });
-    el.append(svgNode("title", {}, `${item.title}\n${item.analysis_at || "时间待核对"}`));
+    el.append(svgNode("title", {}, `${item.title}\n${item.analysis_at || "时间待核对"}${hint ? `\n${hint}` : ""}`));
     el.addEventListener("click", () => showReport(item.hash));
     el.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showReport(item.hash); }
@@ -64,19 +64,20 @@
     if (!subject.value) { reportChart.append(node("p", "empty chart-placeholder", "选择一个主题查看报告节点。")); return; }
     if (!dated.length) { reportChart.append(node("p", "empty chart-placeholder", "该主题没有明确分析时间的报告。")); return; }
     const { width, x } = geometry(dated);
-    const svg = svgNode("svg", { viewBox: `0 0 ${width} 230`, width, height: 230, "aria-label": `${subject.value}报告节点图` });
-    for (const [name, y] of [["偏多", 57], ["暂不可比", 112], ["偏空", 167]]) {
+    const svg = svgNode("svg", { viewBox: `0 0 ${width} 292`, width, height: 292, "aria-label": `${subject.value}判断节点图` });
+    const positions = { bullish: 45, neutral: 91, mixed: 137, bearish: 183, unknown: 229 };
+    const colors = { bullish: "#5cddac", neutral: "#e6c776", mixed: "#b6a3f5", bearish: "#ff918f", unknown: "#8496ae" };
+    for (const [direction, y] of Object.entries(positions)) {
       svg.append(svgNode("line", { x1: 78, y1: y, x2: width - 30, y2: y, class: "grid" }));
-      svg.append(svgNode("text", { x: 16, y: y + 4, class: "chart-label" }, name));
+      svg.append(svgNode("text", { x: 12, y: y + 4, class: "chart-label" }, directionLabel(direction)));
     }
     dated.forEach((item, index) => {
       const direction = stance(item);
-      const y = direction === "bullish" ? 57 : direction === "bearish" ? 167 : 112;
-      const fill = direction === "bullish" ? "#5cddac" : direction === "bearish" ? "#ff918f" : "#8496ae";
-      svg.append(circle({ cx: x(index), cy: y, r: 10, fill, "data-hash": item.hash }, item, "report-node"));
-      svg.append(svgNode("text", { x: x(index), y: 208, "text-anchor": "middle" }, item.analysis_at.slice(5, 16).replace("T", " ")));
+      const evidence = item.subject_judgments?.[subject.value]?.evidence || "未找到该主题的独立结论";
+      svg.append(circle({ cx: x(index), cy: positions[direction], r: 10, fill: colors[direction], "data-hash": item.hash, "data-direction": direction }, item, "report-node", `${directionLabel(direction)}：${evidence}`));
+      svg.append(svgNode("text", { x: x(index), y: 274, "text-anchor": "middle" }, item.analysis_at.slice(5, 16).replace("T", " ")));
     });
-    svg.append(svgNode("line", { x1: 78, y1: 187, x2: width - 30, y2: 187, class: "axis" }));
+    svg.append(svgNode("line", { x1: 78, y1: 250, x2: width - 30, y2: 250, class: "axis" }));
     reportChart.append(svg);
     if (unknown.length) {
       const details = node("details", "", "");
@@ -153,7 +154,9 @@
       const date = node("div", "date", item.analysis_at ? item.analysis_at.replace("T", " ").slice(0, 16) : `分析时间待核对${item.source_time_hint ? ` · 文件名时间 ${item.source_time_hint}` : ""}`);
       const heading = node("button", "report-title", item.title);
       heading.addEventListener("click", () => showReport(item.hash));
-      const summary = node("p", "summary", item.summary || "结论待核对；点击查看原报告");
+      const judgment = item.subject_judgments?.[selected];
+      const summary = node("p", "summary", judgment?.evidence ? judgment.evidence : item.summary || "结论待核对；点击查看原报告");
+      if (selected) card.append(node("p", "subject-judgment", `${selected}判断：${directionLabel(judgment?.direction)}${judgment?.source_line ? ` · 原文第 ${judgment.source_line} 行` : ""}`));
       const detail = node("div", "detail", `${item.subjects.join(" / ") || "主题待核对"} · ${item.horizon || "窗口待核对"} · ${item.market_session === "intraday" ? "盘中" : item.market_session === "close" ? "收盘" : "口径待核对"} · ${item.main_probability == null ? "概率待核对" : `主情景 ${item.main_probability}%`}`);
       const joint = item.subjects.length > 1;
       const ready = !joint && item.extraction_status === "confirmed";

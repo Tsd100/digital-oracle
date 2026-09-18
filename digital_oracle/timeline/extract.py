@@ -4,8 +4,10 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone, timedelta
 
+from .judgment import subject_judgments
+
 CN = timezone(timedelta(hours=8))
-PARSER_VERSION = 2
+PARSER_VERSION = 3
 
 TOPIC_PATTERNS = {
     "有色": (r"有色", r"non.?ferrous"),
@@ -89,11 +91,13 @@ def extract_report(text: str) -> dict:
     data_note = next((l.lstrip("> ").strip() for l in lines if "数据口径" in l or "数据截止" in l), None)
     session = "intraday" if (data_note and "盘中" in data_note) or "盘中数据" in text[:600] else "close" if "收盘" in text[:600] else "unknown"
     subjects = _topics(title)
+    summary_line = next((i + 1 for i, line in enumerate(lines) if summary and summary in line), None)
     quality = "confirmed" if _analysis_time(text) and horizon and summary and len(subjects) == 1 else "needs_review"
     return {
         "title": title, "subjects": subjects, "analysis_at": _analysis_time(text),
         "data_as_of": data_note, "market_session": session, "horizon": horizon,
-        "summary": summary, "summary_line": next((i + 1 for i, line in enumerate(lines) if summary and summary in line), None),
+        "summary": summary, "summary_line": summary_line,
+        "subject_judgments": subject_judgments(summary, subjects, summary_line),
         "main_probability": scenarios[0]["probability"] if scenarios else None,
         "scenarios": scenarios, "thresholds": threshold_rows, "extraction_status": quality,
         "parser_version": PARSER_VERSION,
