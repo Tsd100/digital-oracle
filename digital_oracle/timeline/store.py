@@ -30,6 +30,42 @@ CREATE TABLE IF NOT EXISTS correction_log (
  report_hash TEXT NOT NULL, field TEXT NOT NULL, old_value TEXT, new_value TEXT NOT NULL,
  changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS publications (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, fingerprint TEXT NOT NULL UNIQUE,
+ analysis_id TEXT NOT NULL, analysis_at TEXT NOT NULL, data_as_of TEXT NOT NULL,
+ source_key TEXT NOT NULL, source_kind TEXT NOT NULL, report_hash TEXT NOT NULL,
+ schema_version TEXT NOT NULL, rule_version TEXT NOT NULL DEFAULT '1.0',
+ published_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(report_hash) REFERENCES reports(hash)
+);
+CREATE TABLE IF NOT EXISTS trend_snapshots (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, publication_id INTEGER NOT NULL,
+ subject_id TEXT NOT NULL, subject_name TEXT NOT NULL, instrument TEXT NOT NULL,
+ quote_currency TEXT NOT NULL, quote_unit TEXT NOT NULL, horizon TEXT NOT NULL,
+ direction TEXT NOT NULL, confidence INTEGER NOT NULL, summary TEXT NOT NULL,
+ probabilities TEXT NOT NULL DEFAULT '[]', levels TEXT NOT NULL DEFAULT '[]',
+ UNIQUE(publication_id, subject_id, instrument, quote_currency, quote_unit, horizon),
+ FOREIGN KEY(publication_id) REFERENCES publications(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS trend_events (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, publication_id INTEGER NOT NULL,
+ subject_id TEXT NOT NULL, horizon TEXT NOT NULL, event_type TEXT NOT NULL,
+ old_direction TEXT, new_direction TEXT NOT NULL, confidence_change TEXT,
+ old_confidence INTEGER, new_confidence INTEGER NOT NULL, streak INTEGER NOT NULL,
+ summary TEXT NOT NULL,
+ FOREIGN KEY(publication_id) REFERENCES publications(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS trend_state (
+ subject_id TEXT NOT NULL, instrument TEXT NOT NULL, quote_currency TEXT NOT NULL,
+ quote_unit TEXT NOT NULL, horizon TEXT NOT NULL, direction TEXT NOT NULL,
+ confidence INTEGER NOT NULL, summary TEXT NOT NULL, streak INTEGER NOT NULL,
+ started_at TEXT NOT NULL, last_reversal_at TEXT, analysis_at TEXT NOT NULL,
+ publication_id INTEGER NOT NULL,
+ PRIMARY KEY(subject_id, instrument, quote_currency, quote_unit, horizon),
+ FOREIGN KEY(publication_id) REFERENCES publications(id)
+);
+CREATE INDEX IF NOT EXISTS idx_trend_snapshots_subject ON trend_snapshots(subject_id, horizon);
+CREATE INDEX IF NOT EXISTS idx_trend_events_subject ON trend_events(subject_id, horizon, id);
 """
 
 
@@ -112,6 +148,41 @@ class TimelineStore:
             return {"reports": len(rows),
                     "sources": conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0],
                     "needs_review": needs_review}
+
+    def current_trends(self, subject_id: str) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM trend_state WHERE subject_id=? ORDER BY CASE horizon WHEN 'short' THEN 1 WHEN 'swing' THEN 2 ELSE 3 END",
+                (subject_id,),
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def trend_events(self, subject_id: str, limit: int = 100) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT e.*, p.analysis_at, p.data_as_of, p.report_hash FROM trend_events e JOIN publications p ON p.id=e.publication_id WHERE e.subject_id=? ORDER BY p.analysis_at, e.id LIMIT ?",
+                (subject_id, limit),
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def trend_points(self, subject_id: str, limit: int = 1000) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT s.*, p.analysis_at, p.data_as_of, p.report_hash FROM trend_snapshots s JOIN publications p ON p.id=s.publication_id WHERE s.subject_id=? ORDER BY p.analysis_at, s.id LIMIT ?",
+                (subject_id, limit),
+            ).fetchall()
+            result = []
+            for row in rows:
+                item = dict(row)
+                item["probabilities"] = json.loads(item["probabilities"])
+                item["levels"] = json.loads(item["levels"])
+                result.append(item)
+            return result
+
+    def automation_health(self) -> dict:
+        with self.connect() as conn:
+            row = conn.execute("SELECT COUNT(*), MAX(published_at) FROM publications").fetchone()
+            return {"publications": row[0], "last_published_at": row[1], "errors": 0}
 
 
 def import_sources(db_path: Path | str = DEFAULT_DB, folders: list[Path] | None = None,
