@@ -191,7 +191,6 @@
     const res = await fetch(`/api/timeline/report/${encodeURIComponent(hash)}`);
     if (!res.ok) return;
     const data = await res.json();
-    renderStructured(data);
     title.textContent = data.title;
     source.textContent = data.sources.join(" · ");
     content.textContent = data.content;
@@ -201,6 +200,7 @@
     const selected = subject.value;
     const res = await fetch(`/api/timeline?subject=${encodeURIComponent(selected)}`);
     const data = await res.json();
+    renderStructured(data);
     document.querySelector("#direction-note").textContent = selected === "美联储"
       ? "美联储报告讨论不同议息会议的加息概率，不能画在资产偏多偏空轴上；需按会议和预测期限分别比较。点击节点查看原文。"
       : "节点读取当前主题在原报告中的结论；方向与概率是否可比是两回事。短中期观点冲突时标为分歧。点按分析时间排序，间距不代表日历天数；点击可查看原文。";

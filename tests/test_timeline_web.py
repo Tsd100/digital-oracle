@@ -3,6 +3,13 @@ from pathlib import Path
 from digital_oracle.timeline import TimelineStore
 from digital_oracle.timeline import publish_report
 from web.app import create_app
+from web.analysis import _SYSTEM_PROMPT
+
+
+def test_web_analysis_prompt_requires_structured_trend_block():
+    assert "```do-trend" in _SYSTEM_PROMPT
+    assert '"schema_version": "1.0"' in _SYSTEM_PROMPT
+    assert "未分析的周期直接省略" in _SYSTEM_PROMPT
 
 
 def test_timeline_page_and_api_show_indexed_report(tmp_path, monkeypatch):

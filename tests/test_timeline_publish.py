@@ -39,6 +39,9 @@ def test_publication_builds_events_and_current_state(tmp_path):
     assert state[0]["direction"] == "strong_bullish"
     assert state[0]["streak"] == 2
     assert "明确看多" in second.summary
+    legacy_view = store.list_reports("黄金")
+    assert legacy_view[-1]["analysis_at"] == "2026-09-22T10:00:00+08:00"
+    assert legacy_view[-1]["extraction_status"] == "confirmed"
 
 
 def test_missing_block_is_reported_without_structured_rows(tmp_path):

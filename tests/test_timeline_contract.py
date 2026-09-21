@@ -37,3 +37,17 @@ def test_rejects_missing_or_multiple_blocks():
         extract_trend_block("# no block")
     with pytest.raises(ContractError, match="exactly one"):
         extract_trend_block(report_with(VALID) + report_with(VALID))
+
+
+def test_validates_probability_and_level_shapes():
+    enriched = VALID.replace(
+        '"summary":"短线承压"',
+        '"summary":"短线承压","probabilities":[{"scenario_id":"gold_1m_up","term":"1m","probability":63}],"levels":[{"kind":"support","value":4292}]',
+    )
+    horizon = extract_trend_block(report_with(enriched)).subjects[0].horizons["short"]
+    assert horizon.probabilities[0]["scenario_id"] == "gold_1m_up"
+    assert horizon.levels[0]["kind"] == "support"
+    with pytest.raises(ContractError, match="probability"):
+        extract_trend_block(report_with(enriched.replace('"probability":63', '"probability":130')))
+    with pytest.raises(ContractError, match="kind"):
+        extract_trend_block(report_with(enriched.replace('"kind":"support"', '"kind":"pivot"')))

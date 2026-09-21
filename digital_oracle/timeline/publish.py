@@ -49,6 +49,18 @@ def publish_report(store: TimelineStore, source_key: str, content: str, source_k
         f"{source_kind}\0{contract.analysis_id}\0{contract.data_as_of}\0{report_hash}".encode("utf-8")
     ).hexdigest()
     parsed = extract_report(content)
+    structured_horizons = sorted({name for subject in contract.subjects for name in subject.horizons})
+    parsed.update({
+        "analysis_at": contract.analysis_at,
+        "data_as_of": contract.data_as_of,
+        "subjects": [subject.subject_name for subject in contract.subjects],
+        "horizon": ",".join(structured_horizons) or None,
+        "summary": "；".join(
+            horizon.summary for subject in contract.subjects for horizon in subject.horizons.values()
+        ) or None,
+        "extraction_status": "confirmed",
+        "structured_trend": True,
+    })
     with store.connect() as conn:
         existing = conn.execute("SELECT id FROM publications WHERE fingerprint=?", (fingerprint,)).fetchone()
         if existing:

@@ -10,6 +10,7 @@ from typing import Any
 
 DIRECTIONS = {"strong_bullish", "bullish", "neutral", "bearish", "strong_bearish", "insufficient"}
 HORIZONS = {"short", "swing", "medium"}
+LEVEL_KINDS = {"support", "resistance", "target", "invalidation"}
 BLOCK_RE = re.compile(r"```do-trend\s*\n(.*?)\n```", re.DOTALL | re.IGNORECASE)
 
 
@@ -60,6 +61,34 @@ def _iso(value: str, path: str) -> str:
     return value
 
 
+def _probabilities(values: Any, path: str) -> tuple[dict[str, Any], ...]:
+    if not isinstance(values, list):
+        raise ContractError(f"{path}.probabilities must be an array")
+    for index, item in enumerate(values):
+        ipath = f"{path}.probabilities[{index}]"
+        if not isinstance(item, dict):
+            raise ContractError(f"{ipath} must be an object")
+        _required(item, "scenario_id", ipath)
+        _required(item, "term", ipath)
+        probability = _required(item, "probability", ipath)
+        if isinstance(probability, bool) or not isinstance(probability, (int, float)) or not 0 <= probability <= 100:
+            raise ContractError(f"{ipath}.probability must be from 0 to 100")
+    return tuple(values)
+
+
+def _levels(values: Any, path: str) -> tuple[dict[str, Any], ...]:
+    if not isinstance(values, list):
+        raise ContractError(f"{path}.levels must be an array")
+    for index, item in enumerate(values):
+        ipath = f"{path}.levels[{index}]"
+        if not isinstance(item, dict) or item.get("kind") not in LEVEL_KINDS:
+            raise ContractError(f"{ipath}.kind is invalid")
+        value = _required(item, "value", ipath)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ContractError(f"{ipath}.value must be numeric")
+    return tuple(values)
+
+
 def extract_trend_block(report: str) -> TrendContract:
     blocks = BLOCK_RE.findall(report)
     if not blocks:
@@ -97,8 +126,8 @@ def extract_trend_block(report: str) -> TrendContract:
                 direction=direction,
                 confidence=confidence,
                 summary=str(_required(value, "summary", hpath)),
-                probabilities=tuple(value.get("probabilities", ())),
-                levels=tuple(value.get("levels", ())),
+                probabilities=_probabilities(value.get("probabilities", []), hpath),
+                levels=_levels(value.get("levels", []), hpath),
             )
         subjects.append(SubjectSnapshot(
             subject_id=str(_required(item, "subject_id", path)).strip().lower(),

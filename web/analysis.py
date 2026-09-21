@@ -129,6 +129,31 @@ _SYSTEM_PROMPT = """你是一个金融数据分析专家。你的任务是基于
 | 信号 | 当前值 | 阈值 | 含义 |
 ```
 
+## 机器可读趋势数据（市场走势问题必须输出）
+
+在报告正文末尾附加且只附加一个 `do-trend` 代码块，代码块起始标记必须是 ```do-trend。JSON 至少包含：
+
+```json
+{
+  "schema_version": "1.0",
+  "analysis_id": "稳定且唯一的分析编号",
+  "analysis_at": "带时区的 ISO 时间",
+  "data_as_of": "带时区的数据截止时间",
+  "subjects": [{
+    "subject_id": "稳定英文标识",
+    "subject_name": "中文名称",
+    "instrument": "标的或合约",
+    "quote_currency": "计价币种",
+    "quote_unit": "计价单位",
+    "horizons": {
+      "short": {"direction": "bullish", "confidence": 65, "summary": "短线结论"}
+    }
+  }]
+}
+```
+
+周期只使用 `short`（1～5 个交易日）、`swing`（1～4 周）、`medium`（1～3 个月），未分析的周期直接省略。方向只使用 `strong_bullish`、`bullish`、`neutral`、`bearish`、`strong_bearish`、`insufficient`。置信度必须是 0～100 的整数。不要根据没有证据的数据补齐周期。
+
 用中文回答。数据中的 `$` 符号用 `USD` 替代以避免 markdown 渲染问题。"""
 
 
