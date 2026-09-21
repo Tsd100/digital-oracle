@@ -15,6 +15,17 @@
       <p>从报告节点看判断变化；只有主题、窗口和情景一致时，概率才连成线。历史判断仅代表报告当时。</p>
       <div class="controls"><label for="subject">分析主题</label><select id="subject"><option value="">全部主题</option><option>有色</option><option>黄金</option><option>白银</option><option>科创50</option><option>半导体</option><option>原油</option><option>创新药</option><option>光模块</option><option>美联储</option></select><span id="count"></span></div>
     </section>
+    <section class="trend-overview" aria-label="当前三周期趋势">
+      <div class="section-heading"><div><p class="eyebrow">CURRENT OUTLOOK</p><h2>当前三周期判断</h2></div><span id="automation-health" class="health-pill">等待趋势数据</span></div>
+      <div id="trend-cards" class="trend-cards"></div>
+      <p id="trend-divergence" class="divergence" hidden></p>
+    </section>
+    <section class="panel chart-panel structured-panel">
+      <div class="section-heading"><div><p class="eyebrow">HORIZON TRACKS</p><h2>短线 · 波段 · 中期趋势</h2></div><div id="track-toggles" class="track-toggles"></div></div>
+      <p class="chart-note">只比较同一对象、同一标的口径和同一周期。纵轴从明确看空（-2）到明确看多（+2）。</p>
+      <div class="chart-scroll" id="trend-chart"></div>
+    </section>
+    <section class="panel structured-panel"><div class="section-heading"><div><p class="eyebrow">RECENT CHANGES</p><h2>最近实质变化</h2></div></div><div id="trend-event-feed" class="changes"></div></section>
     <section class="visual-grid">
       <article class="stat"><span>报告数量</span><strong id="stat-reports">—</strong></article>
       <article class="stat"><span>明确分析时间</span><strong id="stat-dated">—</strong></article>

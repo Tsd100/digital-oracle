@@ -157,6 +157,14 @@ class TimelineStore:
             ).fetchall()
             return [dict(row) for row in rows]
 
+    def resolve_subject_id(self, subject: str) -> str | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT subject_id FROM trend_snapshots WHERE subject_id=? OR subject_name=? ORDER BY id DESC LIMIT 1",
+                (subject, subject),
+            ).fetchone()
+            return row[0] if row else None
+
     def trend_events(self, subject_id: str, limit: int = 100) -> list[dict]:
         with self.connect() as conn:
             rows = conn.execute(

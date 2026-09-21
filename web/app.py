@@ -29,7 +29,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from web.db import delete_history_item, get_history, get_history_item, init_db, insert_question, save_report, update_status
 from web.fetcher import run_fetch
 from web.analysis import generate_report, _is_llm_configured, AVAILABLE_MODELS, DEFAULT_MODEL
-from digital_oracle.timeline import TimelineStore, compare_subject, import_sources
+from digital_oracle.timeline import TimelineStore, compare_subject, import_sources, publish_report
 from digital_oracle.timeline.store import DEFAULT_DB as TIMELINE_DEFAULT_DB, DEFAULT_ARCHIVE
 
 TIMELINE_DB = TIMELINE_DEFAULT_DB
@@ -78,13 +78,21 @@ def _run_workflow(qid: str, question: str, model: str) -> None:
 
         save_report(qid, report)
         try:
-            TimelineStore(TIMELINE_DB).add(f"web:{qid}", report, "web")
+            trend_result = publish_report(TimelineStore(TIMELINE_DB), f"web:{qid}", report, "web")
         except Exception as exc:
             queue.put({"event": "progress", "data": {"step": 3, "message": f"报告已保存，时间线待补录：{exc}"}})
+            trend_result = None
         queue.put({"event": "done", "data": {
             "id": qid, "status": "done",
             "llm_used": _is_llm_configured(),
             "model": model if _is_llm_configured() else None,
+            "trend_publication": None if trend_result is None else {
+                "publication_id": trend_result.publication_id,
+                "duplicate": trend_result.duplicate,
+                "updated_tracks": trend_result.updated_tracks,
+                "summary": trend_result.summary,
+                "errors": list(trend_result.errors),
+            },
         }})
 
     except Exception as exc:
@@ -147,7 +155,14 @@ def create_app() -> Flask:
             len(row["subjects"]) == 1 and row["extraction_status"] != "confirmed" for row in rows
         )
         counts["matching_ready"] = sum(len(row["subjects"]) == 1 and row["extraction_status"] == "confirmed" for row in rows)
-        return jsonify({"reports": rows, "changes": changes, "counts": counts})
+        subject_id = store.resolve_subject_id(subject) if subject else None
+        return jsonify({
+            "reports": rows, "changes": changes, "counts": counts,
+            "current_state": store.current_trends(subject_id) if subject_id else [],
+            "trend_points": store.trend_points(subject_id) if subject_id else [],
+            "trend_events": store.trend_events(subject_id) if subject_id else [],
+            "automation_health": store.automation_health(),
+        })
 
     @app.route("/api/timeline/report/<digest>")
     def api_timeline_report(digest: str):

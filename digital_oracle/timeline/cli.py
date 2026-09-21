@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
 
-from . import TimelineStore, compare_subject, import_sources
+from . import TimelineStore, compare_subject, import_sources, publish_report
 from .store import DEFAULT_ARCHIVE, DEFAULT_DB
 
 
@@ -49,11 +50,20 @@ def main(argv=None):
     correction.add_argument("--hash", required=True)
     correction.add_argument("--field", required=True)
     correction.add_argument("--value", required=True, help="JSON value")
+    publish = sub.add_parser("publish", help="发布带 do-trend 数据块的新报告")
+    publish.add_argument("report", type=Path)
+    publish.add_argument("--source-key")
+    publish.add_argument("--source-kind", default="file")
     args = parser.parse_args(argv)
     if args.command == "import":
         print(json.dumps(import_sources(args.db, [args.reports, args.archive], args.web_db), ensure_ascii=False, indent=2))
         return
     store = TimelineStore(args.db)
+    if args.command == "publish":
+        path = args.report.resolve()
+        result = publish_report(store, args.source_key or str(path), path.read_text(encoding="utf-8-sig"), args.source_kind)
+        print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
+        return
     if args.command == "correct":
         store.correct(args.hash, args.field, json.loads(args.value))
         print("校正已记录")

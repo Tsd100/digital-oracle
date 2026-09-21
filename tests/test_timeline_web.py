@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from digital_oracle.timeline import TimelineStore
+from digital_oracle.timeline import publish_report
 from web.app import create_app
 
 
@@ -12,7 +13,11 @@ def test_timeline_page_and_api_show_indexed_report(tmp_path, monkeypatch):
     monkeypatch.setattr(web_app, "TIMELINE_DB", db, raising=False)
     app = create_app()
     client = app.test_client()
-    assert client.get("/timeline").status_code == 200
+    page = client.get("/timeline")
+    assert page.status_code == 200
+    assert b'id="trend-cards"' in page.data
+    assert b'id="trend-chart"' in page.data
+    assert b'id="automation-health"' in page.data
     assert client.get("/").status_code == 200
     assert client.get("/api/history").status_code == 200
     response = client.get("/api/timeline?subject=有色")
@@ -52,3 +57,20 @@ def test_timeline_separates_joint_reports_from_single_subject_gaps(tmp_path, mon
     assert counts["matching_single_needs_review"] == 1
     assert counts["matching_ready"] == 1
     assert counts["matching_needs_review"] == 2
+
+
+def test_timeline_api_returns_structured_trends(tmp_path, monkeypatch):
+    import json
+    from web.app import create_app
+    import web.app as app_module
+
+    db = tmp_path / "timeline.db"
+    monkeypatch.setattr(app_module, "TIMELINE_DB", db)
+    payload = {"schema_version":"1.0","analysis_id":"gold-web","analysis_at":"2026-09-21T10:00:00+08:00","data_as_of":"2026-09-21T09:55:00+08:00","subjects":[{"subject_id":"gold","subject_name":"黄金","instrument":"XAUUSD","quote_currency":"USD","quote_unit":"oz","horizons":{"short":{"direction":"bullish","confidence":66,"summary":"短线偏多"}}}]}
+    report = f"# 黄金\n```do-trend\n{json.dumps(payload, ensure_ascii=False)}\n```\n"
+    publish_report(TimelineStore(db), "web:test", report, "web")
+    data = create_app().test_client().get("/api/timeline?subject=黄金").get_json()
+    assert data["current_state"][0]["direction"] == "bullish"
+    assert data["trend_points"][0]["horizon"] == "short"
+    assert data["trend_events"][0]["event_type"] == "initiated"
+    assert data["automation_health"]["publications"] == 1

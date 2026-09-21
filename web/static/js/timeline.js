@@ -8,6 +8,12 @@
   const probabilityChart = document.querySelector("#probability-chart");
   const probabilityNote = document.querySelector("#probability-note");
   const undated = document.querySelector("#undated");
+  const trendCards = document.querySelector("#trend-cards");
+  const trendChart = document.querySelector("#trend-chart");
+  const trendFeed = document.querySelector("#trend-event-feed");
+  const health = document.querySelector("#automation-health");
+  const divergence = document.querySelector("#trend-divergence");
+  const toggles = document.querySelector("#track-toggles");
   const dialog = document.querySelector("#report-dialog");
   const title = document.querySelector("#dialog-title");
   const source = document.querySelector("#dialog-source");
@@ -33,7 +39,65 @@
     return item.subject_judgments?.[subject.value]?.direction || "unknown";
   }
   function directionLabel(direction) {
-    return { bullish: "偏多", bearish: "偏空", neutral: "震荡或修复", mixed: "短中期分歧", unknown: "未判定", not_applicable: "需按会议比较" }[direction] || "未判定";
+    return { strong_bullish: "明确看多", bullish: "偏多", bearish: "偏空", strong_bearish: "明确看空", neutral: "震荡或修复", mixed: "短中期分歧", unknown: "未判定", not_applicable: "需按会议比较" }[direction] || "未判定";
+  }
+  const horizonNames = { short: "短线", swing: "波段", medium: "中期" };
+  const eventNames = { initiated: "首次建立", continued: "延续", strengthened: "增强", weakened: "减弱", shifted: "转向", reversed: "反转" };
+  const directionScores = { strong_bullish: 2, bullish: 1, neutral: 0, bearish: -1, strong_bearish: -2 };
+  function renderStructured(data) {
+    const stateByHorizon = new Map(data.current_state.map((item) => [item.horizon, item]));
+    trendCards.replaceChildren();
+    for (const horizon of ["short", "swing", "medium"]) {
+      const state = stateByHorizon.get(horizon);
+      const card = node("article", `trend-card ${state?.direction || "empty"}`, "");
+      card.append(node("span", "period", horizonNames[horizon]));
+      card.append(node("strong", "", state ? directionLabel(state.direction) : "尚未建立"));
+      card.append(node("p", "", state ? `置信度 ${state.confidence}% · 连续 ${state.streak} 次` : "下一份合规报告将建立基准"));
+      card.append(node("p", "", state?.summary || "本次没有该周期的结构化结论"));
+      trendCards.append(card);
+    }
+    health.textContent = data.automation_health.publications
+      ? `自动入库正常 · ${data.automation_health.publications} 次发布`
+      : "等待首份结构化报告";
+    health.classList.toggle("warning", !data.automation_health.publications);
+    const scores = data.current_state.map((item) => directionScores[item.direction]).filter(Number.isFinite);
+    const split = scores.some((score) => score > 0) && scores.some((score) => score < 0);
+    divergence.hidden = !split;
+    divergence.textContent = split ? "周期分化：短线、波段和中期的方向并不一致，请按各自期限理解。" : "";
+    drawTrendTracks(data.trend_points);
+    trendFeed.replaceChildren();
+    const meaningful = data.trend_events.filter((event) => event.event_type !== "continued").slice().reverse();
+    meaningful.forEach((event) => {
+      const item = node("article", `trend-event ${event.event_type}`, "");
+      item.append(node("strong", "", `${horizonNames[event.horizon]} · ${eventNames[event.event_type] || event.event_type}`));
+      item.append(node("p", "", `${directionLabel(event.old_direction)} → ${directionLabel(event.new_direction)} · 置信度 ${event.new_confidence}% · 连续 ${event.streak} 次`));
+      item.addEventListener("click", () => showReport(event.report_hash));
+      trendFeed.append(item);
+    });
+    if (!meaningful.length) trendFeed.append(node("p", "empty", data.trend_points.length ? "最近没有实质方向变化。" : "暂无结构化趋势事件。"));
+  }
+  function drawTrendTracks(points) {
+    trendChart.replaceChildren(); toggles.replaceChildren();
+    if (!points.length) { trendChart.append(node("p", "empty chart-placeholder", "该主题尚无结构化趋势数据；旧报告仍可在下方查看。")); return; }
+    const enabled = new Set(["short", "swing", "medium"]);
+    for (const horizon of enabled) {
+      const label = node("label", "", ""); const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.checked = true;
+      checkbox.addEventListener("change", () => { checkbox.checked ? enabled.add(horizon) : enabled.delete(horizon); paint(); });
+      label.append(checkbox, document.createTextNode(horizonNames[horizon])); toggles.append(label);
+    }
+    const paint = () => {
+      trendChart.replaceChildren(); const width = Math.max(800, points.length * 80 + 160); const height = 300;
+      const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height}`, width, height, "aria-label": "三周期趋势曲线" });
+      const y = (score) => 45 + (2 - score) * 48; const dates = [...new Set(points.map((p) => p.analysis_at))]; const x = (date) => 105 + dates.indexOf(date) * ((width - 160) / Math.max(1, dates.length - 1));
+      for (const score of [2,1,0,-1,-2]) { svg.append(svgNode("line", { x1: 90, y1: y(score), x2: width-30, y2: y(score), class: "grid" })); svg.append(svgNode("text", { x: 10, y: y(score)+4 }, `${score > 0 ? "+" : ""}${score} ${directionLabel(Object.keys(directionScores).find((key) => directionScores[key] === score))}`)); }
+      for (const horizon of enabled) {
+        const series = points.filter((p) => p.horizon === horizon && Number.isFinite(directionScores[p.direction]));
+        if (series.length > 1) svg.append(svgNode("polyline", { points: series.map((p) => `${x(p.analysis_at)},${y(directionScores[p.direction])}`).join(" "), class: `trend-line ${horizon}` }));
+        series.forEach((p) => { const dot = circle({ cx:x(p.analysis_at), cy:y(directionScores[p.direction]), r:8, fill:horizon === "short" ? "#ffb66e" : horizon === "swing" ? "#73d9bb" : "#9f8df3" }, { ...p, title:`${horizonNames[horizon]} ${directionLabel(p.direction)}`, hash:p.report_hash }, "trend-point", p.summary); svg.append(dot); });
+      }
+      trendChart.append(svg);
+    };
+    paint();
   }
   function reviewReasons(item) {
     const reasons = [];
@@ -127,6 +191,7 @@
     const res = await fetch(`/api/timeline/report/${encodeURIComponent(hash)}`);
     if (!res.ok) return;
     const data = await res.json();
+    renderStructured(data);
     title.textContent = data.title;
     source.textContent = data.sources.join(" · ");
     content.textContent = data.content;

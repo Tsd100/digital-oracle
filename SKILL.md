@@ -245,7 +245,15 @@ Four analysis dimensions:
 
 ### Step 6: Output report
 
-**历史时间线元数据：** 生成新报告时，在正文标题后附一行简短元数据：`分析时间（北京时间）`、`数据截止`、`分析窗口`、`盘中/收盘`、`主题`、`标的及合约`。这帮助历史复盘索引保持可比；正文既有结构不变。报告归档后，可在项目目录运行 `python -m digital_oracle.timeline.cli import` 更新历史索引。用户询问旧报告结论变化时使用 `do-history`，不要把历史比较当作实时行情预测。
+**自动趋势发布（新报告必做）：** 市场走势类报告必须在正文末尾附加且只附加一个 `do-trend` JSON 代码块，使用 `schema_version: "1.0"`。记录 `analysis_id`、带时区的 `analysis_at` 与 `data_as_of`，以及每个对象的稳定 `subject_id`、名称、标的、计价币种和单位。`horizons` 只使用 `short`（1～5 个交易日）、`swing`（1～4 周）、`medium`（1～3 个月）；未分析的周期直接省略，不得伪造为中性。方向只使用 `strong_bullish`、`bullish`、`neutral`、`bearish`、`strong_bearish`、`insufficient`，置信度为 0～100 的整数。
+
+报告写入 Markdown 文件后，必须执行：
+
+```powershell
+python -m digital_oracle.timeline.cli publish "<报告绝对路径>" --source-kind codex
+```
+
+只有发布命令成功后本次分析才算完成。最终回复应包含命令返回的三周期变化摘要。Web 和 CLI 分析入口调用同一发布服务。旧报告复盘仍使用 `do-history`，不得把历史比较当作实时行情预测。
 
 **Must follow this structure.** You can adjust the number of layers and wording, but the four main sections (data summary, analysis, probability estimates, conclusion) cannot be omitted or merged into prose paragraphs:
 
