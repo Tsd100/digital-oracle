@@ -4,10 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>DO 历史分析时间线</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("do-timeline-theme");
+      const theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <link rel="stylesheet" href="/static/css/timeline.css">
 </head>
 <body>
-  <header class="topbar"><a href="/">← 返回 DO</a><span>DO · 历史分析时间线</span></header>
+  <header class="topbar"><a href="/">← 返回 DO</a><div class="topbar-actions"><span>DO · 历史分析时间线</span><button id="theme-toggle" type="button" aria-pressed="false"></button></div></header>
   <main class="layout">
     <section class="hero">
       <p class="eyebrow">DIGITAL ORACLE / REPORT HISTORY</p>

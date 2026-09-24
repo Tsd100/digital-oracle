@@ -18,6 +18,20 @@
   const title = document.querySelector("#dialog-title");
   const source = document.querySelector("#dialog-source");
   const content = document.querySelector("#dialog-content");
+  const themeToggle = document.querySelector("#theme-toggle");
+  function updateThemeButton() {
+    const light = document.documentElement.dataset.theme === "light";
+    themeToggle.textContent = light ? "🌙 深色模式" : "☀️ 浅色模式";
+    themeToggle.setAttribute("aria-label", light ? "切换到深色模式" : "切换到浅色模式");
+    themeToggle.setAttribute("aria-pressed", String(light));
+  }
+  themeToggle.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("do-timeline-theme", next);
+    updateThemeButton();
+  });
+  updateThemeButton();
   const params = new URLSearchParams(location.search);
   if (params.get("subject")) subject.value = params.get("subject");
   document.querySelector("#close-dialog").addEventListener("click", () => dialog.close());
