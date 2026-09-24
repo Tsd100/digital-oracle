@@ -52,6 +52,7 @@ def test_missing_block_is_reported_without_structured_rows(tmp_path):
     with pytest.raises(ContractError):
         publish_report(store, "codex:bad", "# plain report", "codex")
     assert store.automation_health()["publications"] == 0
+    assert store.automation_health()["errors"] == 1
 
 
 def test_publication_compares_matching_probabilities_and_levels(tmp_path):
@@ -80,3 +81,12 @@ def test_publication_does_not_compare_changed_scenario(tmp_path):
     result = publish_report(store, "two", make_report(analysis_id="gold-2", analysis_at="2026-09-22T10:00:00+08:00",
                                                       probabilities=[{"scenario_id": "gold_hold_4200", "term": "1m", "probability": 80}]), "codex")
     assert result.events[0]["probability_changes"] == []
+
+
+def test_reusing_source_key_keeps_published_report_for_audit(tmp_path):
+    store = TimelineStore(tmp_path / "timeline.db")
+    result = publish_report(store, "reports/gold.md", make_report(), "codex")
+    store.add("reports/gold.md", "# 新版但尚未结构化的报告\n\n## 结论\n> 震荡。", "file")
+    with store.connect() as conn:
+        report_hash = conn.execute("SELECT report_hash FROM publications WHERE id=?", (result.publication_id,)).fetchone()[0]
+    assert store.get_report(report_hash)["content"].startswith("# 黄金分析")

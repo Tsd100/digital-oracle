@@ -67,6 +67,10 @@ CREATE TABLE IF NOT EXISTS trend_state (
 );
 CREATE INDEX IF NOT EXISTS idx_trend_snapshots_subject ON trend_snapshots(subject_id, horizon);
 CREATE INDEX IF NOT EXISTS idx_trend_events_subject ON trend_events(subject_id, horizon, id);
+CREATE TABLE IF NOT EXISTS publication_failures (
+ source_key TEXT PRIMARY KEY, source_kind TEXT NOT NULL, error TEXT NOT NULL,
+ failed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
@@ -97,7 +101,10 @@ class TimelineStore:
             conn.execute("INSERT INTO sources VALUES (?, ?, ?) ON CONFLICT(source_key) DO UPDATE SET report_hash=excluded.report_hash, source_kind=excluded.source_kind",
                          (source_key, digest, source_kind))
             # A changed source may leave an old orphan; corrections stay tied to the old hash for audit.
-            conn.execute("DELETE FROM reports WHERE hash NOT IN (SELECT report_hash FROM sources)")
+            conn.execute(
+                "DELETE FROM reports WHERE hash NOT IN (SELECT report_hash FROM sources) "
+                "AND hash NOT IN (SELECT report_hash FROM publications)"
+            )
         return digest
 
     def correct(self, digest: str, field: str, value):
@@ -174,11 +181,11 @@ class TimelineStore:
     def trend_events(self, subject_id: str, limit: int = 100) -> list[dict]:
         with self.connect() as conn:
             rows = conn.execute(
-                "SELECT e.*, p.analysis_at, p.data_as_of, p.report_hash FROM trend_events e JOIN publications p ON p.id=e.publication_id WHERE e.subject_id=? ORDER BY p.analysis_at, e.id LIMIT ?",
+                "SELECT e.*, p.analysis_at, p.data_as_of, p.report_hash FROM trend_events e JOIN publications p ON p.id=e.publication_id WHERE e.subject_id=? ORDER BY p.analysis_at DESC, e.id DESC LIMIT ?",
                 (subject_id, limit),
             ).fetchall()
             result = []
-            for row in rows:
+            for row in reversed(rows):
                 item = dict(row)
                 item["probability_changes"] = json.loads(item["probability_changes"])
                 item["level_changes"] = json.loads(item["level_changes"])
@@ -202,7 +209,16 @@ class TimelineStore:
     def automation_health(self) -> dict:
         with self.connect() as conn:
             row = conn.execute("SELECT COUNT(*), MAX(published_at) FROM publications").fetchone()
-            return {"publications": row[0], "last_published_at": row[1], "errors": 0}
+            errors = conn.execute("SELECT COUNT(*) FROM publication_failures").fetchone()[0]
+            return {"publications": row[0], "last_published_at": row[1], "errors": errors}
+
+    def record_publication_failure(self, source_key: str, source_kind: str, error: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT INTO publication_failures(source_key,source_kind,error) VALUES(?,?,?) "
+                "ON CONFLICT(source_key) DO UPDATE SET source_kind=excluded.source_kind,error=excluded.error,failed_at=CURRENT_TIMESTAMP",
+                (source_key, source_kind, error),
+            )
 
 
 def import_sources(db_path: Path | str = DEFAULT_DB, folders: list[Path] | None = None,

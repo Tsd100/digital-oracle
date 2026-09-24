@@ -51,7 +51,11 @@ def _summary(events: list[dict]) -> str:
 
 
 def publish_report(store: TimelineStore, source_key: str, content: str, source_kind: str = "file") -> PublishResult:
-    contract = extract_trend_block(content)
+    try:
+        contract = extract_trend_block(content)
+    except Exception as exc:
+        store.record_publication_failure(source_key, source_kind, str(exc))
+        raise
     report_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
     fingerprint = hashlib.sha256(
         f"{source_kind}\0{contract.analysis_id}\0{contract.data_as_of}\0{report_hash}".encode("utf-8")
@@ -70,6 +74,7 @@ def publish_report(store: TimelineStore, source_key: str, content: str, source_k
         "structured_trend": True,
     })
     with store.connect() as conn:
+        conn.execute("DELETE FROM publication_failures WHERE source_key=?", (source_key,))
         existing = conn.execute("SELECT id FROM publications WHERE fingerprint=?", (fingerprint,)).fetchone()
         if existing:
             events = [dict(row) for row in conn.execute("SELECT * FROM trend_events WHERE publication_id=? ORDER BY id", (existing[0],))]

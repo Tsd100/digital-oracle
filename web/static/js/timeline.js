@@ -44,6 +44,11 @@
   const horizonNames = { short: "短线", swing: "波段", medium: "中期" };
   const eventNames = { initiated: "首次建立", continued: "延续", strengthened: "增强", weakened: "减弱", shifted: "转向", reversed: "反转" };
   const directionScores = { strong_bullish: 2, bullish: 1, neutral: 0, bearish: -1, strong_bearish: -2 };
+  function durationLabel(state) {
+    if (!state?.started_at || !state?.analysis_at) return "";
+    const days = Math.max(0, Math.floor((new Date(state.analysis_at) - new Date(state.started_at)) / 86400000));
+    return days === 0 ? "本次建立" : `持续 ${days} 天`;
+  }
   function renderStructured(data) {
     const stateByHorizon = new Map(data.current_state.map((item) => [item.horizon, item]));
     trendCards.replaceChildren();
@@ -52,14 +57,16 @@
       const card = node("article", `trend-card ${state?.direction || "empty"}`, "");
       card.append(node("span", "period", horizonNames[horizon]));
       card.append(node("strong", "", state ? directionLabel(state.direction) : "尚未建立"));
-      card.append(node("p", "", state ? `置信度 ${state.confidence}% · 连续 ${state.streak} 次` : "下一份合规报告将建立基准"));
+      card.append(node("p", "", state ? `置信度 ${state.confidence}% · 连续 ${state.streak} 次 · ${durationLabel(state)}` : "下一份合规报告将建立基准"));
       card.append(node("p", "", state?.summary || "本次没有该周期的结构化结论"));
       trendCards.append(card);
     }
-    health.textContent = data.automation_health.publications
-      ? `自动入库正常 · ${data.automation_health.publications} 次发布`
-      : "等待首份结构化报告";
-    health.classList.toggle("warning", !data.automation_health.publications);
+    health.textContent = data.automation_health.errors
+      ? `有 ${data.automation_health.errors} 次发布需要处理`
+      : data.automation_health.publications
+        ? `自动入库正常 · ${data.automation_health.publications} 次发布`
+        : "等待首份结构化报告";
+    health.classList.toggle("warning", Boolean(data.automation_health.errors) || !data.automation_health.publications);
     const scores = data.current_state.map((item) => directionScores[item.direction]).filter(Number.isFinite);
     const split = scores.some((score) => score > 0) && scores.some((score) => score < 0);
     divergence.hidden = !split;
