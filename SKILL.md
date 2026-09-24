@@ -319,6 +319,16 @@ python -m digital_oracle.timeline.cli publish "<报告绝对路径>" --source-ki
 *Fetched at: [date]*
 ```
 
+### Step 7: Save, publish, and archive
+
+After the report is complete, run these steps automatically without asking for confirmation:
+
+1. Save the exact Markdown report under `D:\Github\Agent\digital-oracle\reports\` using `YYYY-MM-DD_HH-MM_<topic-slug>.md`.
+2. Publish that file through the required command from Step 6. A failed trend publication must be reported with its field-level error, while the readable report remains saved.
+3. Copy the same report to `D:\坚果云同步\WS\Digital-Oracle-Reports\` and `D:\坚果云同步\ACO\codex outputs\06-文档\`.
+4. Verify source and destination size/hash, update `codex outputs\.tracker.json`, and run `python "D:\坚果云同步\ACO\codex outputs\update_index.py"`.
+5. Include the archive paths and the returned three-horizon change summary in the final response.
+
 ## Notes
 
 - Polymarket `slug_contains` search is fuzzy — filter results by title keywords after fetching

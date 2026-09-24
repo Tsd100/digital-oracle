@@ -54,6 +54,9 @@ def main(argv=None):
     publish.add_argument("report", type=Path)
     publish.add_argument("--source-key")
     publish.add_argument("--source-kind", default="file")
+    trend = sub.add_parser("trend", help="读取主题的结构化三周期趋势")
+    trend.add_argument("--subject", required=True)
+    trend.add_argument("--limit", type=int, default=100)
     args = parser.parse_args(argv)
     if args.command == "import":
         print(json.dumps(import_sources(args.db, [args.reports, args.archive], args.web_db), ensure_ascii=False, indent=2))
@@ -63,6 +66,18 @@ def main(argv=None):
         path = args.report.resolve()
         result = publish_report(store, args.source_key or str(path), path.read_text(encoding="utf-8-sig"), args.source_kind)
         print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
+        return
+    if args.command == "trend":
+        subject_id = store.resolve_subject_id(args.subject)
+        result = {
+            "subject": args.subject,
+            "subject_id": subject_id,
+            "current_state": store.current_trends(subject_id) if subject_id else [],
+            "points": store.trend_points(subject_id, args.limit) if subject_id else [],
+            "events": store.trend_events(subject_id, args.limit) if subject_id else [],
+            "automation_health": store.automation_health(),
+        }
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return
     if args.command == "correct":
         store.correct(args.hash, args.field, json.loads(args.value))
