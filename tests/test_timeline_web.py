@@ -81,3 +81,27 @@ def test_timeline_api_returns_structured_trends(tmp_path, monkeypatch):
     assert data["trend_points"][0]["horizon"] == "short"
     assert data["trend_events"][0]["event_type"] == "initiated"
     assert data["automation_health"]["publications"] == 1
+
+
+def test_web_workflow_auto_publishes_and_returns_change_summary(tmp_path, monkeypatch):
+    import json
+    import web.app as app_module
+
+    db = tmp_path / "timeline.db"
+    payload = {"schema_version":"1.0","analysis_id":"gold-workflow","analysis_at":"2026-09-25T10:00:00+08:00","data_as_of":"2026-09-25T09:55:00+08:00","subjects":[{"subject_id":"gold","subject_name":"黄金","instrument":"XAUUSD","quote_currency":"USD","quote_unit":"oz","horizons":{"short":{"direction":"bullish","confidence":66,"summary":"短线偏多"}}}]}
+    report = f"# 黄金\n```do-trend\n{json.dumps(payload, ensure_ascii=False)}\n```\n"
+    monkeypatch.setattr(app_module, "TIMELINE_DB", db)
+    monkeypatch.setattr(app_module, "run_fetch", lambda question, queue: {"results": {}})
+    monkeypatch.setattr(app_module, "generate_report", lambda question, results, queue, model: report)
+    monkeypatch.setattr(app_module, "save_report", lambda qid, content: None)
+    monkeypatch.setattr(app_module, "update_status", lambda *args: None)
+    monkeypatch.setattr(app_module, "_is_llm_configured", lambda: False)
+    queue = app_module._create_stream("workflow-test")
+    app_module._run_workflow("workflow-test", "黄金走势", "test-model")
+    messages = []
+    while not queue.empty():
+        messages.append(queue.get_nowait())
+    done = next(message["data"] for message in messages if message["event"] == "done")
+    assert done["trend_publication"]["updated_tracks"] == 1
+    assert "黄金短线" in done["trend_publication"]["summary"]
+    assert TimelineStore(db).automation_health()["publications"] == 1
