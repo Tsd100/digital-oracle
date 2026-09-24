@@ -8,7 +8,7 @@ import json
 from .contract import extract_trend_block
 from .extract import extract_report
 from .store import TimelineStore
-from .trends import DIRECTION_SCORE, compare_confidence, compare_direction
+from .trends import DIRECTION_SCORE, compare_confidence, compare_direction, compare_levels, compare_probabilities
 
 
 LABELS = {
@@ -20,6 +20,7 @@ EVENT_LABELS = {
     "weakened": "减弱", "shifted": "转向", "reversed": "反转",
 }
 HORIZON_LABELS = {"short": "短线", "swing": "波段", "medium": "中期"}
+LEVEL_LABELS = {"support": "支撑位", "resistance": "压力位", "target": "目标位", "invalidation": "失效位"}
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,14 @@ def _summary(events: list[dict]) -> str:
         prefix = f"{event['subject_name']}{HORIZON_LABELS[event['horizon']]}"
         current = LABELS[event["new_direction"]]
         change = EVENT_LABELS[event["event_type"]]
-        lines.append(f"{prefix}：{current}（{change}），连续 {event['streak']} 次。")
+        details = []
+        for probability in event.get("probability_changes", []):
+            label = "上涨概率" if str(probability["scenario_id"]).endswith("_up") else f"{probability['scenario_id']} 概率"
+            details.append(f"{label} {probability['old']:g}%→{probability['new']:g}%")
+        for level in event.get("level_changes", []):
+            details.append(f"{LEVEL_LABELS[level['kind']]} {level['old']:g}→{level['new']:g}")
+        suffix = f" {'；'.join(details)}。" if details else ""
+        lines.append(f"{prefix}：{current}（{change}），连续 {event['streak']} 次。{suffix}")
     return "\n".join(lines)
 
 
@@ -66,6 +74,8 @@ def publish_report(store: TimelineStore, source_key: str, content: str, source_k
         if existing:
             events = [dict(row) for row in conn.execute("SELECT * FROM trend_events WHERE publication_id=? ORDER BY id", (existing[0],))]
             for event in events:
+                event["probability_changes"] = json.loads(event["probability_changes"])
+                event["level_changes"] = json.loads(event["level_changes"])
                 event["subject_name"] = next((s.subject_name for s in contract.subjects if s.subject_id == event["subject_id"]), event["subject_id"])
             return PublishResult(existing[0], True, len(events), tuple(events), _summary(events))
         conn.execute(
@@ -106,18 +116,32 @@ def publish_report(store: TimelineStore, source_key: str, content: str, source_k
                 started_at = previous["started_at"] if previous and streak > 1 else contract.analysis_at
                 last_reversal = contract.analysis_at if event_type == "reversed" else (previous["last_reversal_at"] if previous else None)
                 confidence_change = compare_confidence(previous["confidence"], snapshot.confidence) if previous else None
+                previous_snapshot = None
+                if previous:
+                    previous_snapshot = conn.execute(
+                        "SELECT probabilities, levels FROM trend_snapshots WHERE publication_id=? AND subject_id=? AND instrument=? AND quote_currency=? AND quote_unit=? AND horizon=?",
+                        (previous["publication_id"], subject.subject_id, subject.instrument, subject.quote_currency, subject.quote_unit, horizon),
+                    ).fetchone()
+                probability_changes = compare_probabilities(
+                    json.loads(previous_snapshot["probabilities"]) if previous_snapshot else [], list(snapshot.probabilities)
+                )
+                level_changes = compare_levels(
+                    json.loads(previous_snapshot["levels"]) if previous_snapshot else [], list(snapshot.levels)
+                )
                 event = {
                     "publication_id": publication_id, "subject_id": subject.subject_id, "subject_name": subject.subject_name,
                     "horizon": horizon, "event_type": event_type, "old_direction": old_direction,
                     "new_direction": snapshot.direction, "confidence_change": confidence_change,
                     "old_confidence": previous["confidence"] if previous else None,
                     "new_confidence": snapshot.confidence, "streak": streak,
+                    "probability_changes": probability_changes, "level_changes": level_changes,
                 }
                 event["summary"] = _summary([event])
                 conn.execute(
-                    "INSERT INTO trend_events(publication_id,subject_id,horizon,event_type,old_direction,new_direction,confidence_change,old_confidence,new_confidence,streak,summary) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO trend_events(publication_id,subject_id,horizon,event_type,old_direction,new_direction,confidence_change,old_confidence,new_confidence,streak,probability_changes,level_changes,summary) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (publication_id, subject.subject_id, horizon, event_type, old_direction, snapshot.direction,
-                     confidence_change, event["old_confidence"], snapshot.confidence, streak, event["summary"]),
+                     confidence_change, event["old_confidence"], snapshot.confidence, streak,
+                     json.dumps(probability_changes, ensure_ascii=False), json.dumps(level_changes, ensure_ascii=False), event["summary"]),
                 )
                 conn.execute(
                     "INSERT INTO trend_state(subject_id,instrument,quote_currency,quote_unit,horizon,direction,confidence,summary,streak,started_at,last_reversal_at,analysis_at,publication_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(subject_id,instrument,quote_currency,quote_unit,horizon) DO UPDATE SET direction=excluded.direction,confidence=excluded.confidence,summary=excluded.summary,streak=excluded.streak,started_at=excluded.started_at,last_reversal_at=excluded.last_reversal_at,analysis_at=excluded.analysis_at,publication_id=excluded.publication_id",

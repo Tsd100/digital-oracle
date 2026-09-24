@@ -78,4 +78,5 @@ dialog::backdrop { background: #000b; }
 .track-toggles{display:flex;gap:8px;flex-wrap:wrap}.track-toggles label{font-size:13px;color:#b8c4d6}.track-toggles input{accent-color:#73d9bb}
 .structured-panel[hidden]{display:none}.trend-line{fill:none;stroke-width:3}.trend-line.short{stroke:#ffb66e}.trend-line.swing{stroke:#73d9bb}.trend-line.medium{stroke:#9f8df3;stroke-dasharray:8 6}.trend-point{cursor:pointer;stroke:#0b111b;stroke-width:3}
 .trend-event{border-left:3px solid #526b91;padding:10px 14px;margin:10px 0;background:#111a29}.trend-event.reversed{border-color:#ff918f}.trend-event.strengthened{border-color:#5cddac}
+.metric-change{display:inline-block;margin:6px 8px 0 0!important;padding:5px 9px;border-radius:8px;background:rgba(115,217,187,.08);color:#9fdec8!important;font-size:13px}
 @media(max-width:760px){.trend-cards{grid-template-columns:1fr}.trend-overview{padding:16px}}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import unittest
+from datetime import date
 from typing import Any
 
 from digital_oracle.providers.yfinance_provider import (
@@ -290,7 +291,7 @@ class BlackScholesGreeksTests(unittest.TestCase):
 class YFinanceProviderTests(unittest.TestCase):
     def setUp(self) -> None:
         self.fake = FakeOptionsFetcher()
-        self.provider = YFinanceProvider(fetcher=self.fake)
+        self.provider = YFinanceProvider(fetcher=self.fake, today=lambda: date(2026, 1, 1))
 
     def test_get_expirations(self) -> None:
         result = self.provider.get_expirations("aapl")
@@ -439,7 +440,7 @@ class YFinanceProviderTests(unittest.TestCase):
 class OptionsChainHelpersTests(unittest.TestCase):
     def setUp(self) -> None:
         fake = FakeOptionsFetcher()
-        provider = YFinanceProvider(fetcher=fake)
+        provider = YFinanceProvider(fetcher=fake, today=lambda: date(2026, 1, 1))
         self.chain = provider.get_chain(
             OptionsChainQuery(ticker="AAPL", expiration="2026-04-17", compute_greeks=False)
         )
@@ -588,7 +589,7 @@ class EdgeCaseTests(unittest.TestCase):
     def test_risk_free_rate_passed_to_greeks(self) -> None:
         """Changing risk-free rate should change Greeks."""
         fake = FakeOptionsFetcher()
-        provider = YFinanceProvider(fetcher=fake)
+        provider = YFinanceProvider(fetcher=fake, today=lambda: date(2026, 1, 1))
 
         chain1 = provider.get_chain(
             OptionsChainQuery(ticker="AAPL", expiration="2026-04-17", risk_free_rate=0.01)

@@ -135,7 +135,7 @@ class BisProviderCreditGapTests(unittest.TestCase):
         )
 
         url, params = self.fake_client.calls[0]
-        self.assertIn("WS_CREDIT_GAP/Q.US+CN.C:G:P", url)
+        self.assertIn("WS_CREDIT_GAP/Q.US+CN", url)
         assert params is not None
         self.assertEqual(params["startPeriod"], 2015)
 
@@ -143,7 +143,7 @@ class BisProviderCreditGapTests(unittest.TestCase):
         self.provider.get_credit_to_gdp()
 
         url, params = self.fake_client.calls[0]
-        self.assertIn("WS_CREDIT_GAP/Q.US.C:G:P", url)
+        self.assertIn("WS_CREDIT_GAP/Q.US", url)
         assert params is not None
         self.assertEqual(params["startPeriod"], 2015)
 

@@ -44,3 +44,35 @@ def compare_probability(old: dict, new: dict) -> float | None:
         return float(new["probability"]) - float(old["probability"])
     except (KeyError, TypeError, ValueError):
         return None
+
+
+def compare_probabilities(old_values: list[dict], new_values: list[dict]) -> list[dict]:
+    old_by_key = {(item.get("scenario_id"), item.get("term")): item for item in old_values}
+    changes = []
+    for new in new_values:
+        key = (new.get("scenario_id"), new.get("term"))
+        old = old_by_key.get(key)
+        if old is None:
+            continue
+        delta = compare_probability(old, new)
+        if delta is None:
+            continue
+        changes.append({
+            "scenario_id": key[0], "term": key[1],
+            "old": old["probability"], "new": new["probability"], "delta": delta,
+        })
+    return changes
+
+
+def compare_levels(old_values: list[dict], new_values: list[dict]) -> list[dict]:
+    old_by_kind = {item.get("kind"): item for item in old_values}
+    changes = []
+    for new in new_values:
+        old = old_by_kind.get(new.get("kind"))
+        if old is None:
+            continue
+        changes.append({
+            "kind": new["kind"], "old": old["value"], "new": new["value"],
+            "delta": float(new["value"]) - float(old["value"]),
+        })
+    return changes

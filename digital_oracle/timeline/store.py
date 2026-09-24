@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS trend_events (
  subject_id TEXT NOT NULL, horizon TEXT NOT NULL, event_type TEXT NOT NULL,
  old_direction TEXT, new_direction TEXT NOT NULL, confidence_change TEXT,
  old_confidence INTEGER, new_confidence INTEGER NOT NULL, streak INTEGER NOT NULL,
+ probability_changes TEXT NOT NULL DEFAULT '[]', level_changes TEXT NOT NULL DEFAULT '[]',
  summary TEXT NOT NULL,
  FOREIGN KEY(publication_id) REFERENCES publications(id) ON DELETE CASCADE
 );
@@ -75,6 +76,11 @@ class TimelineStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            event_columns = {row[1] for row in conn.execute("PRAGMA table_info(trend_events)")}
+            if "probability_changes" not in event_columns:
+                conn.execute("ALTER TABLE trend_events ADD COLUMN probability_changes TEXT NOT NULL DEFAULT '[]'")
+            if "level_changes" not in event_columns:
+                conn.execute("ALTER TABLE trend_events ADD COLUMN level_changes TEXT NOT NULL DEFAULT '[]'")
 
     def connect(self):
         conn = sqlite3.connect(self.db_path)
@@ -171,7 +177,13 @@ class TimelineStore:
                 "SELECT e.*, p.analysis_at, p.data_as_of, p.report_hash FROM trend_events e JOIN publications p ON p.id=e.publication_id WHERE e.subject_id=? ORDER BY p.analysis_at, e.id LIMIT ?",
                 (subject_id, limit),
             ).fetchall()
-            return [dict(row) for row in rows]
+            result = []
+            for row in rows:
+                item = dict(row)
+                item["probability_changes"] = json.loads(item["probability_changes"])
+                item["level_changes"] = json.loads(item["level_changes"])
+                result.append(item)
+            return result
 
     def trend_points(self, subject_id: str, limit: int = 1000) -> list[dict]:
         with self.connect() as conn:

@@ -71,6 +71,14 @@
       const item = node("article", `trend-event ${event.event_type}`, "");
       item.append(node("strong", "", `${horizonNames[event.horizon]} · ${eventNames[event.event_type] || event.event_type}`));
       item.append(node("p", "", `${directionLabel(event.old_direction)} → ${directionLabel(event.new_direction)} · 置信度 ${event.new_confidence}% · 连续 ${event.streak} 次`));
+      for (const change of event.probability_changes || []) {
+        const label = change.scenario_id.endsWith("_up") ? "上涨概率" : `${change.scenario_id} 概率`;
+        item.append(node("p", "metric-change", `${label}：${change.old}% → ${change.new}%（${change.delta >= 0 ? "+" : ""}${change.delta}个百分点）`));
+      }
+      const levelNames = { support: "支撑位", resistance: "压力位", target: "目标位", invalidation: "失效位" };
+      for (const change of event.level_changes || []) {
+        item.append(node("p", "metric-change", `${levelNames[change.kind] || change.kind}：${change.old} → ${change.new}`));
+      }
       item.addEventListener("click", () => showReport(event.report_hash));
       trendFeed.append(item);
     });

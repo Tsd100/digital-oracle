@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Protocol, Sequence
+from typing import Any, Callable, Protocol, Sequence
 
 from ._coerce import _coerce_float, _coerce_int
 from .base import ProviderError, ProviderParseError, SignalProvider
@@ -370,8 +370,9 @@ class YFinanceProvider(SignalProvider):
     display_name = "Yahoo Finance Options"
     capabilities = ("options_chain", "options_expirations", "greeks")
 
-    def __init__(self, *, fetcher: OptionsFetcher | None = None) -> None:
+    def __init__(self, *, fetcher: OptionsFetcher | None = None, today: Callable[[], date] = date.today) -> None:
         self._fetcher: OptionsFetcher = fetcher or _YFinanceFetcher()
+        self._today = today
 
     # -- public API --------------------------------------------------------
 
@@ -405,7 +406,7 @@ class YFinanceProvider(SignalProvider):
         # Time to expiration (years)
         try:
             exp_date = datetime.strptime(expiration, "%Y-%m-%d").date()
-            days_to_exp = (exp_date - date.today()).days
+            days_to_exp = (exp_date - self._today()).days
             T = max(days_to_exp, 0) / 365.0
         except ValueError:
             T = 0.0
