@@ -18,12 +18,12 @@
   <main class="layout">
     <section class="hero">
       <p class="eyebrow">DIGITAL ORACLE / REPORT HISTORY</p>
-      <h1>判断怎样变化？</h1>
+      <h1 id="hero-title">判断怎样变化？</h1>
       <p>从报告节点看判断变化；只有主题、窗口和情景一致时，概率才连成线。历史判断仅代表报告当时。</p>
       <div class="controls"><label for="subject">分析主题</label><select id="subject"><option value="">全部主题</option><option>有色</option><option>黄金</option><option>白银</option><option>科创50</option><option>半导体</option><option>原油</option><option>创新药</option><option>光模块</option><option>美联储</option></select><span id="count"></span></div>
     </section>
-    <section class="trend-overview" aria-label="当前三周期趋势">
-      <div class="section-heading"><div><p class="eyebrow">CURRENT OUTLOOK</p><h2>当前三周期判断</h2></div><span id="automation-health" class="health-pill">等待趋势数据</span></div>
+    <section id="trend-overview" class="trend-overview" aria-label="当前趋势摘要">
+      <div class="section-heading"><div><p id="overview-eyebrow" class="eyebrow">CURRENT OUTLOOK</p><h2 id="overview-title">当前三周期判断</h2></div><span id="automation-health" class="health-pill">等待趋势数据</span></div>
       <div id="trend-cards" class="trend-cards"></div>
       <p id="trend-divergence" class="divergence" hidden></p>
     </section>
@@ -33,13 +33,14 @@
       <div class="chart-scroll" id="trend-chart"></div>
     </section>
     <section class="panel structured-panel"><div class="section-heading"><div><p class="eyebrow">RECENT CHANGES</p><h2>最近实质变化</h2></div></div><div id="trend-event-feed" class="changes"></div></section>
-    <section class="visual-grid">
+    <section id="timeline-stats" class="visual-grid">
       <article class="stat"><span>报告数量</span><strong id="stat-reports">—</strong></article>
       <article class="stat"><span>明确分析时间</span><strong id="stat-dated">—</strong></article>
       <article class="stat"><span>有依据的判断节点</span><strong id="stat-direction">—</strong></article>
       <article class="stat"><span>可比概率线段</span><strong id="stat-segments">—</strong></article>
     </section>
-    <section class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow">REPORT MAP</p><h2>判断节点图</h2></div><div class="legend"><span><i class="legend-dot bullish"></i>偏多</span><span><i class="legend-dot neutral"></i>震荡</span><span><i class="legend-dot mixed"></i>分歧</span><span><i class="legend-dot bearish"></i>偏空</span><span><i class="legend-dot review"></i>未判定</span></div></div><p class="chart-note" id="direction-note">节点读取当前主题在原报告中的结论；方向与概率是否可比是两回事。短中期观点冲突时标为分歧。点按分析时间排序，间距不代表日历天数；点击可查看原文。</p><div class="chart-scroll" id="report-chart"></div><div id="undated" class="undated"></div></section>
+    <div id="legacy-chart-anchor" hidden></div>
+    <section id="report-map-panel" class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow">REPORT MAP</p><h2>判断节点图</h2></div><div class="legend"><span><i class="legend-dot bullish"></i>偏多</span><span><i class="legend-dot neutral"></i>震荡</span><span><i class="legend-dot mixed"></i>分歧</span><span><i class="legend-dot bearish"></i>偏空</span><span><i class="legend-dot review"></i>未判定</span></div></div><p class="chart-note" id="direction-note">节点读取当前主题在原报告中的结论；方向与概率是否可比是两回事。短中期观点冲突时标为分歧。点按分析时间排序，间距不代表日历天数；点击可查看原文。</p><div class="chart-scroll" id="report-chart"></div><div id="undated" class="undated"></div></section>
     <section class="panel chart-panel"><div class="section-heading"><div><p class="eyebrow">SCENARIO TRACK</p><h2>主情景概率</h2></div><span id="probability-count" class="small-label"></span></div><p class="chart-note">相同主题、预测窗口及情景定义才连线；单独的点不构成趋势。</p><div class="chart-scroll" id="probability-chart"></div><p id="probability-note" class="chart-note"></p></section>
     <section class="panel"><details id="change-list"><summary>查看逐次变化 <span id="change-list-count"></span></summary><p class="chart-note">仅比较明确分析时间的报告；每组保留不可比原因与盘中/收盘口径。</p><div id="changes" class="changes"></div></details></section>
     <section class="panel"><details id="report-list"><summary>展开全部报告与原文入口 <span id="report-list-count"></span></summary><div id="timeline" class="timeline"></div></details></section>

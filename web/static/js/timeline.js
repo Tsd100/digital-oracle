@@ -9,6 +9,12 @@
   const probabilityNote = document.querySelector("#probability-note");
   const undated = document.querySelector("#undated");
   const trendCards = document.querySelector("#trend-cards");
+  const trendOverview = document.querySelector("#trend-overview");
+  const overviewEyebrow = document.querySelector("#overview-eyebrow");
+  const overviewTitle = document.querySelector("#overview-title");
+  const reportMapPanel = document.querySelector("#report-map-panel");
+  const legacyChartAnchor = document.querySelector("#legacy-chart-anchor");
+  const timelineStats = document.querySelector("#timeline-stats");
   const trendChart = document.querySelector("#trend-chart");
   const trendFeed = document.querySelector("#trend-event-feed");
   const health = document.querySelector("#automation-health");
@@ -64,6 +70,19 @@
     return days === 0 ? "本次建立" : `持续 ${days} 天`;
   }
   function renderStructured(data) {
+    const hasStructured = data.trend_points.length > 0;
+    document.querySelectorAll(".structured-panel").forEach((panel) => { panel.hidden = !hasStructured; });
+    trendOverview.classList.toggle("legacy-mode", !hasStructured);
+    if (!hasStructured) {
+      renderLegacyOverview(data);
+      trendOverview.after(reportMapPanel);
+      reportMapPanel.after(timelineStats);
+      return;
+    }
+    legacyChartAnchor.after(reportMapPanel);
+    reportMapPanel.before(timelineStats);
+    overviewEyebrow.textContent = "CURRENT OUTLOOK";
+    overviewTitle.textContent = "当前三周期判断";
     const stateByHorizon = new Map(data.current_state.map((item) => [item.horizon, item]));
     trendCards.replaceChildren();
     for (const horizon of ["short", "swing", "medium"]) {
@@ -104,6 +123,33 @@
       trendFeed.append(item);
     });
     if (!meaningful.length) trendFeed.append(node("p", "empty", data.trend_points.length ? "最近没有实质方向变化。" : "暂无结构化趋势事件。"));
+  }
+  function renderLegacyOverview(data) {
+    overviewEyebrow.textContent = "HISTORICAL SIGNAL SNAPSHOT";
+    overviewTitle.textContent = `${subject.value || "全部主题"}历史观点摘要`;
+    const dated = data.reports.filter((item) => item.analysis_at).sort((a, b) => a.analysis_at.localeCompare(b.analysis_at));
+    const resolved = dated.filter((item) => !["unknown", "not_applicable"].includes(stance(item)));
+    const latest = resolved.at(-1);
+    const previous = resolved.slice(0, -1).reverse().find((item) => stance(item) !== stance(latest || {}));
+    const cards = [
+      { period: "最新有效判断", value: latest ? directionLabel(stance(latest)) : "暂无明确判断", detail: latest?.subject_judgments?.[subject.value]?.evidence || "旧报告中尚未识别出明确方向", meta: latest?.analysis_at?.replace("T", " ").slice(0, 16) || "时间待补" },
+      { period: "最近方向变化", value: latest && previous ? `${directionLabel(stance(previous))} → ${directionLabel(stance(latest))}` : "暂无方向切换", detail: previous ? `相对 ${previous.analysis_at.replace("T", " ").slice(0, 10)} 的判断发生变化` : "现有有效记录方向基本连续", meta: latest ? `最新节点 ${latest.analysis_at.slice(0, 10)}` : "等待有效节点" },
+      { period: "历史覆盖质量", value: `${resolved.length} / ${data.reports.length} 个有效节点`, detail: `${dated.length} 份有明确分析时间，${data.reports.length - resolved.length} 份仍需补字段或拆分联合主题`, meta: "新三周期轨道从下一份DO报告开始" },
+    ];
+    trendCards.replaceChildren();
+    cards.forEach((info, index) => {
+      const card = node("article", `trend-card ${index === 0 && latest ? stance(latest) : ""}`, "");
+      card.append(node("span", "period", info.period));
+      card.append(node("strong", "", info.value));
+      card.append(node("p", "", info.detail));
+      card.append(node("p", "card-meta", info.meta));
+      trendCards.append(card);
+    });
+    health.textContent = data.automation_health.errors
+      ? `有 ${data.automation_health.errors} 次发布需要处理`
+      : "下一份DO报告将自动建立三周期轨道";
+    health.classList.add("warning");
+    divergence.hidden = true;
   }
   function drawTrendTracks(points) {
     trendChart.replaceChildren(); toggles.replaceChildren();
@@ -229,18 +275,20 @@
     const selected = subject.value;
     const res = await fetch(`/api/timeline?subject=${encodeURIComponent(selected)}`);
     const data = await res.json();
+    document.querySelector("#hero-title").textContent = selected ? `${selected}研判时间线` : "研判时间线";
     renderStructured(data);
     document.querySelector("#direction-note").textContent = selected === "美联储"
       ? "美联储报告讨论不同议息会议的加息概率，不能画在资产偏多偏空轴上；需按会议和预测期限分别比较。点击节点查看原文。"
       : "节点读取当前主题在原报告中的结论；方向与概率是否可比是两回事。短中期观点冲突时标为分歧。点按分析时间排序，间距不代表日历天数；点击可查看原文。";
-    count.textContent = selected
-      ? `${data.reports.length} 份匹配报告 · 联合分析 ${data.counts.matching_joint} 份 · 单主题需补字段 ${data.counts.matching_single_needs_review} 份（全库待整理 ${data.counts.needs_review} 份）`
-      : `${data.reports.length} 份报告 · ${data.counts.needs_review} 份待整理`;
     const dated = data.reports.filter((item) => item.analysis_at).sort((a, b) => a.analysis_at.localeCompare(b.analysis_at));
     const unknown = data.reports.filter((item) => !item.analysis_at).sort((a, b) => (b.source_time_hint || "").localeCompare(a.source_time_hint || ""));
+    const resolvedCount = dated.filter((item) => !["unknown", "not_applicable"].includes(stance(item))).length;
+    count.textContent = selected
+      ? `${data.reports.length} 份历史报告 · ${dated.length} 份有明确时间 · ${resolvedCount} 个有效判断`
+      : `${data.reports.length} 份历史报告 · 选择主题查看判断变化`;
     document.querySelector("#stat-reports").textContent = data.reports.length;
     document.querySelector("#stat-dated").textContent = dated.length;
-    document.querySelector("#stat-direction").textContent = dated.filter((item) => !["unknown", "not_applicable"].includes(stance(item))).length;
+    document.querySelector("#stat-direction").textContent = resolvedCount;
     document.querySelector("#stat-segments").textContent = data.changes.filter((pair) => pair.main_probability_delta !== null).length;
     document.querySelector("#report-list-count").textContent = `（${data.reports.length} 份）`;
     document.querySelector("#change-list-count").textContent = `（${data.changes.length} 组）`;

@@ -77,6 +77,9 @@ dialog::backdrop { background: #000b; }
 .trend-card{border:1px solid #34445f;border-radius:16px;background:#111a29;padding:18px;min-height:150px}
 .trend-card .period{color:#90a3bd;font-size:12px;letter-spacing:.12em}.trend-card strong{display:block;font-size:28px;margin:10px 0}.trend-card p{margin:6px 0;color:#b8c4d6}
 .trend-card.bullish,.trend-card.strong_bullish{border-color:#397e68}.trend-card.bearish,.trend-card.strong_bearish{border-color:#955150}.trend-card.empty{border-style:dashed;opacity:.72}
+.trend-overview.legacy-mode{background:linear-gradient(135deg,rgba(69,102,151,.2),rgba(20,29,45,.96));margin-bottom:22px}
+.trend-overview.legacy-mode .trend-card{min-height:132px}.trend-overview.legacy-mode .trend-card strong{font-size:24px}.trend-overview.legacy-mode .trend-card .card-meta{font-size:12px;color:#8297b4}
+.trend-card .direction-chip{display:inline-flex;width:max-content;border-radius:999px;padding:4px 9px;font-size:12px;margin-top:8px;background:#263951;color:#cfe0f5}
 .health-pill{border:1px solid #3b735f;border-radius:999px;padding:7px 12px;color:#8ee4c3;font-size:13px}.health-pill.warning{border-color:#956b3f;color:#f1c27d}
 .divergence{margin:16px 0 0;padding:12px;border-left:3px solid #e6c776;background:rgba(230,199,118,.08)}
 .track-toggles{display:flex;gap:8px;flex-wrap:wrap}.track-toggles label{font-size:13px;color:#b8c4d6}.track-toggles input{accent-color:#73d9bb}

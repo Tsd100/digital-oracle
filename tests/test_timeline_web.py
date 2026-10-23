@@ -27,6 +27,9 @@ def test_timeline_page_and_api_show_indexed_report(tmp_path, monkeypatch):
     assert b'id="automation-health"' in page.data
     assert b'id="theme-toggle"' in page.data
     assert b'localStorage.getItem("do-timeline-theme")' in page.data
+    assert b'id="overview-title"' in page.data
+    assert b'id="report-map-panel"' in page.data
+    assert b'id="legacy-chart-anchor"' in page.data
     assert client.get("/").status_code == 200
     assert client.get("/api/history").status_code == 200
     response = client.get("/api/timeline?subject=有色")
