@@ -8,9 +8,15 @@ try {
   await page.locator('#count').getByText(/\d+ 份历史报告 · \d+ 份有明确时间 · \d+ 个有效判断/).waitFor();
   await page.goto(`${baseUrl}/timeline?subject=黄金`);
   await page.locator('#count').getByText(/\d+ 份历史报告 · \d+ 份有明确时间 · \d+ 个有效判断/).waitFor();
-  await page.locator('#overview-title').getByText('黄金历史观点摘要').waitFor();
-  if (await page.locator('.structured-panel:visible').count()) throw new Error('empty structured panels should be hidden');
-  if (await page.locator('#trend-cards .trend-card').count() !== 3) throw new Error('legacy overview should contain three cards');
+  const overviewTitle = await page.locator('#overview-title').textContent();
+  const structuredVisible = await page.locator('.structured-panel:visible').count();
+  if (overviewTitle === '当前三周期判断') {
+    if (structuredVisible !== 2) throw new Error(`structured mode panels=${structuredVisible}`);
+  } else {
+    if (overviewTitle !== '黄金历史观点摘要') throw new Error(`unexpected overview ${overviewTitle}`);
+    if (structuredVisible) throw new Error('empty structured panels should be hidden');
+  }
+  if (await page.locator('#trend-cards .trend-card').count() !== 3) throw new Error('overview should contain three cards');
   await page.locator('#report-list').evaluate((el) => { el.open = true; });
   await page.locator('.report-card').first().waitFor();
   const jointCards = await page.locator('.report-card .quality.review', { hasText: '联合分析' }).count();

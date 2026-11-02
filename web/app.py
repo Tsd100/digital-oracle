@@ -31,6 +31,7 @@ from web.fetcher import run_fetch
 from web.analysis import generate_report, _is_llm_configured, AVAILABLE_MODELS, DEFAULT_MODEL
 from digital_oracle.timeline import TimelineStore, compare_subject, import_sources, publish_report
 from digital_oracle.timeline.store import DEFAULT_DB as TIMELINE_DEFAULT_DB, DEFAULT_ARCHIVE
+from web.management import build_management_summary
 
 TIMELINE_DB = TIMELINE_DEFAULT_DB
 
@@ -125,8 +126,12 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
+        return render_template("index.html")
+
+    @app.route("/ask")
+    def ask():
         return render_template(
-            "index.html",
+            "ask.html",
             llm_configured=_is_llm_configured(),
             available_models=AVAILABLE_MODELS,
             default_model=DEFAULT_MODEL,
@@ -163,6 +168,10 @@ def create_app() -> Flask:
             "trend_events": store.trend_events(subject_id) if subject_id else [],
             "automation_health": store.automation_health(),
         })
+
+    @app.route("/api/management/summary")
+    def api_management_summary():
+        return jsonify(build_management_summary(TimelineStore(TIMELINE_DB), get_history(limit=10000)))
 
     @app.route("/api/timeline/report/<digest>")
     def api_timeline_report(digest: str):

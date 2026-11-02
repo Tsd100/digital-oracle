@@ -1,107 +1,68 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Digital Oracle — 市场数据仪表盘</title>
-<link rel="stylesheet" href="/static/css/dashboard.css">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DO 研判管理中心</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem("do-timeline-theme");
+      const theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/css/management.css">
 </head>
 <body>
-
-<!-- Sidebar -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-header">
-    <h3>历史记录</h3>
-    <button onclick="document.getElementById('question-form').dispatchEvent(new Event('reset')); document.getElementById('question-input').focus();">+ 新问题</button>
-  </div>
-  <div class="history-list" id="history-list"></div>
-  <div class="empty-history" id="empty-history">
-    还没有提问记录<br>
-    输入问题开始分析
-  </div>
-</aside>
-
-<!-- Toggle Sidebar -->
-<button class="toggle-sidebar" id="toggle-sidebar" title="Toggle Sidebar">&larr;</button>
-
-<!-- Main Content -->
-<main class="main" id="main-content">
-
-  <!-- Header -->
-  <header class="header">
-    <h1>DIGITAL ORACLE</h1>
-    <p class="tagline">All you need to know is already priced in.</p>
-    <p><a href="/timeline" style="color:#8b7cf7">查看历史分析时间线 →</a></p>
+  <header class="management-nav">
+    <a class="brand" href="/">DO <span>研判管理中心</span></a>
+    <nav aria-label="主要导航">
+      <a class="active" href="/">主题总览</a>
+      <a href="/timeline">历史时间线</a>
+      <a class="primary-link" href="/ask">＋ 发起新分析</a>
+      <button id="theme-toggle" type="button" aria-pressed="false"></button>
+    </nav>
   </header>
 
-  <!-- Question Input -->
-  <div class="question-area">
-    <form id="question-form">
-      <input type="text" class="question-input" id="question-input"
-             placeholder="输入你的问题，例如：比特币到底了吗？AI 是不是泡沫？美联储何时降息？"
-             autocomplete="off">
-      <select class="model-select" id="model-select">
-        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
-        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
-      </select>
-      <button type="submit" class="ask-btn" id="ask-btn">提问</button>
-    </form>
-  </div>
-
-  <!-- Provider Badges Grid (2x6) -->
-  <div class="provider-grid">
-    <div class="provider-badge"><div class="badge-label">PM</div><div class="badge-desc">Polymarket</div></div>
-    <div class="provider-badge"><div class="badge-label">K</div><div class="badge-desc">Kalshi</div></div>
-    <div class="provider-badge"><div class="badge-label">Y</div><div class="badge-desc">Yahoo Finance</div></div>
-    <div class="provider-badge"><div class="badge-label">D</div><div class="badge-desc">Deribit</div></div>
-    <div class="provider-badge"><div class="badge-label">T</div><div class="badge-desc">US Treasury</div></div>
-    <div class="provider-badge"><div class="badge-label">COT</div><div class="badge-desc">CFTC</div></div>
-    <div class="provider-badge"><div class="badge-label">FG</div><div class="badge-desc">Fear & Greed</div></div>
-    <div class="provider-badge"><div class="badge-label">CG</div><div class="badge-desc">CoinGecko</div></div>
-    <div class="provider-badge"><div class="badge-label">BIS</div><div class="badge-desc">BIS Rates</div></div>
-    <div class="provider-badge"><div class="badge-label">WB</div><div class="badge-desc">World Bank</div></div>
-    <div class="provider-badge"><div class="badge-label">SEC</div><div class="badge-desc">EDGAR</div></div>
-    <div class="provider-badge"><div class="badge-label">OPT</div><div class="badge-desc">Options</div></div>
-  </div>
-
-  <!-- Workflow Panel -->
-  <div class="workflow-panel" id="workflow-panel">
-    <div class="workflow-step">
-      <div class="step-icon" id="step1-icon">1</div>
-      <div class="step-info">
-        <div class="step-title">理解问题 & 规划信号</div>
-        <div class="step-detail" id="step1-detail"></div>
+  <main class="management-shell">
+    <section id="management-overview" class="overview">
+      <div>
+        <p class="eyebrow">DIGITAL ORACLE / RESEARCH CONTROL</p>
+        <h1>今天的研判，<br><span>哪些发生了变化？</span></h1>
+        <p class="lede">集中查看各主题最新判断、相对上次的变化和自动入库状态。</p>
       </div>
-    </div>
-    <div class="workflow-step">
-      <div class="step-icon" id="step2-icon">2</div>
-      <div class="step-info">
-        <div class="step-title">拉取市场数据</div>
-        <div class="step-detail" id="step2-detail"></div>
-        <div class="provider-mini-list" id="provider-mini-list"></div>
+      <div id="overview-metrics" class="overview-metrics" aria-live="polite">
+        <div class="metric skeleton"></div><div class="metric skeleton"></div><div class="metric skeleton"></div>
       </div>
-    </div>
-    <div class="workflow-step">
-      <div class="step-icon" id="step3-icon">3</div>
-      <div class="step-info">
-        <div class="step-title">生成分析报告</div>
-        <div class="step-detail" id="step3-detail"></div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading">
+        <div><p class="eyebrow">SUBJECT WATCHLIST</p><h2>主题研判总览</h2></div>
+        <div class="view-controls">
+          <button class="filter active" data-filter="all" type="button">全部</button>
+          <button class="filter" data-filter="changed" type="button">近期变化</button>
+          <button class="filter" data-filter="current" type="button">近期更新</button>
+        </div>
       </div>
-    </div>
+      <div id="subject-grid" class="subject-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel changes-panel">
+        <div class="section-heading"><div><p class="eyebrow">RECENT CHANGES</p><h2>最近判断变化</h2></div></div>
+        <div id="recent-changes" class="change-feed"></div>
+      </article>
+      <aside id="system-health" class="panel health-panel">
+        <div class="section-heading"><div><p class="eyebrow">SYSTEM HEALTH</p><h2>入库与数据状态</h2></div></div>
+        <div id="health-content" class="health-content"></div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="load-error" class="load-error" hidden>
+    <strong>管理数据加载失败</strong><span id="load-error-message"></span><button id="retry" type="button">重新加载</button>
   </div>
-
-  <!-- Report Area -->
-  <div class="report-area" id="report-area">
-    <div class="report-content" id="report-content"></div>
-    <div class="report-actions" id="report-actions" style="display:none;">
-      <button class="action-btn" id="new-question-btn">&larr; 新问题</button>
-      <button class="action-btn download" id="download-btn">下载 Markdown 报告</button>
-    </div>
-  </div>
-
-</main>
-
-<script src="/static/js/app.js"></script>
+  <script src="/static/js/management.js"></script>
 </body>
 </html>

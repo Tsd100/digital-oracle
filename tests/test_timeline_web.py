@@ -39,6 +39,64 @@ def test_timeline_page_and_api_show_indexed_report(tmp_path, monkeypatch):
     assert "有色走势" in client.get(f"/api/timeline/report/{digest}").json["content"]
 
 
+def test_management_home_replaces_question_console_and_preserves_it_at_ask(tmp_path, monkeypatch):
+    import web.app as web_app
+
+    db = tmp_path / "timeline.db"
+    TimelineStore(db).add(
+        "archive:gold.md",
+        "# 黄金走势\n\n确认北京时间：2026-11-02 10:30；分析窗口：未来 1—4 周。\n\n## 结论\n> 偏强。",
+    )
+    monkeypatch.setattr(web_app, "TIMELINE_DB", db, raising=False)
+    client = create_app().test_client()
+
+    home = client.get("/")
+    assert home.status_code == 200
+    assert b'id="management-overview"' in home.data
+    assert b'id="subject-grid"' in home.data
+    assert b'id="recent-changes"' in home.data
+    assert b'id="system-health"' in home.data
+    assert b'id="question-form"' not in home.data
+
+    ask = client.get("/ask")
+    assert ask.status_code == 200
+    assert b'id="question-form"' in ask.data
+    assert b'href="/"' in ask.data
+
+
+def test_management_summary_combines_subject_state_and_health(tmp_path, monkeypatch):
+    import web.app as web_app
+
+    db = tmp_path / "timeline.db"
+    store = TimelineStore(db)
+    store.add(
+        "archive:gold-old.md",
+        "# 黄金走势\n\n确认北京时间：2026-10-30 10:00；分析窗口：未来 1—4 周。\n\n## 结论\n> 偏弱。",
+    )
+    store.add(
+        "archive:gold-new.md",
+        "# 黄金走势\n\n确认北京时间：2026-11-02 10:30；分析窗口：未来 1—4 周。\n\n## 结论\n> 偏强。",
+    )
+    monkeypatch.setattr(web_app, "TIMELINE_DB", db, raising=False)
+    monkeypatch.setattr(
+        web_app,
+        "get_history",
+        lambda limit=50: [{"id": "q1", "question": "黄金走势", "status": "done", "created_at": "2026-11-02T02:30:00Z"}],
+    )
+
+    data = create_app().test_client().get("/api/management/summary").get_json()
+    gold = next(item for item in data["subjects"] if item["name"] == "黄金")
+
+    assert data["totals"]["reports"] == 2
+    assert data["totals"]["chat_analyses"] == 1
+    assert data["automation_health"]["errors"] == 0
+    assert gold["latest_direction"] == "bullish"
+    assert gold["previous_direction"] == "bearish"
+    assert gold["latest_analysis_at"].startswith("2026-11-02")
+    assert gold["report_count"] == 2
+    assert data["recent_changes"][0]["subject"] == "黄金"
+
+
 def test_timeline_counts_are_scoped_to_selected_subject_and_corrections(tmp_path, monkeypatch):
     import web.app as web_app
     db = tmp_path / "timeline.db"
@@ -86,6 +144,8 @@ def test_timeline_api_returns_structured_trends(tmp_path, monkeypatch):
     assert data["trend_points"][0]["horizon"] == "short"
     assert data["trend_events"][0]["event_type"] == "initiated"
     assert data["automation_health"]["publications"] == 1
+    management = create_app().test_client().get("/api/management/summary").get_json()
+    assert management["automation_health"]["last_published_at"].endswith("Z")
 
 
 def test_web_workflow_auto_publishes_and_returns_change_summary(tmp_path, monkeypatch):
