@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import re
 from pathlib import Path
@@ -10,8 +11,11 @@ from pathlib import Path
 from .extract import extract_report
 from .judgment import subject_judgments
 
-DEFAULT_DB = Path(__file__).resolve().parents[2] / "web" / "timeline.db"
-DEFAULT_ARCHIVE = Path(r"D:\坚果云同步\WS\Digital-Oracle-Reports")
+DEFAULT_DB = Path(os.environ.get(
+    "DO_TIMELINE_DB",
+    Path(os.environ.get("DO_DATA_DIR", Path(__file__).resolve().parents[2] / "web")) / "timeline.db",
+))
+DEFAULT_ARCHIVE = Path(os.environ.get("DO_ARCHIVE_DIR", r"D:\坚果云同步\WS\Digital-Oracle-Reports"))
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS reports (
  hash TEXT PRIMARY KEY, title TEXT NOT NULL, extracted TEXT NOT NULL, content TEXT NOT NULL

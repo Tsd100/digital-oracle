@@ -6,7 +6,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent / "digital_oracle.db"
+from web.config import runtime_paths
+
+DB_PATH = runtime_paths().chat_db
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS history (
@@ -32,6 +34,7 @@ def _new_id() -> str:
 
 
 def get_connection() -> sqlite3.Connection:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")

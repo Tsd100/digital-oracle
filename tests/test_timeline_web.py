@@ -53,9 +53,11 @@ def test_management_home_replaces_question_console_and_preserves_it_at_ask(tmp_p
     home = client.get("/")
     assert home.status_code == 200
     assert b'id="management-overview"' in home.data
-    assert b'id="subject-grid"' in home.data
     assert b'id="recent-changes"' in home.data
     assert b'id="system-health"' in home.data
+    assert b'id="horizon-matrix"' in home.data
+    assert b'id="history-matrix"' in home.data
+    assert b'id="signal-drawer"' in home.data
     assert b'id="question-form"' not in home.data
 
     ask = client.get("/ask")
@@ -94,7 +96,21 @@ def test_management_summary_combines_subject_state_and_health(tmp_path, monkeypa
     assert gold["previous_direction"] == "bearish"
     assert gold["latest_analysis_at"].startswith("2026-11-02")
     assert gold["report_count"] == 2
+    assert [point["direction"] for point in gold["history"]] == ["bearish", "bullish"]
+    assert gold["history"][1]["hash"]
     assert data["recent_changes"][0]["subject"] == "黄金"
+
+
+def test_health_endpoint_checks_both_databases(tmp_path, monkeypatch):
+    import web.app as web_app
+
+    db = tmp_path / "timeline.db"
+    monkeypatch.setattr(web_app, "TIMELINE_DB", db, raising=False)
+    response = create_app().test_client().get("/healthz")
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "ok"
+    assert response.get_json()["timeline_db"] == "ok"
+    assert response.get_json()["chat_db"] == "ok"
 
 
 def test_timeline_counts_are_scoped_to_selected_subject_and_corrections(tmp_path, monkeypatch):

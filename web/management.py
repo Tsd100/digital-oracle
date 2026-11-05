@@ -84,6 +84,16 @@ def build_management_summary(
             "changed_from_at": previous.get("analysis_at") if previous else None,
             "freshness": _freshness(latest.get("analysis_at") if latest else None, now),
             "horizons": horizons,
+            "history": [
+                {
+                    "analysis_at": report["analysis_at"],
+                    "direction": _direction(report, subject),
+                    "evidence": _evidence(report, subject),
+                    "hash": report["hash"],
+                    "title": report["title"],
+                }
+                for report in resolved
+            ],
             "timeline_url": f"/timeline?subject={subject}",
         }
         summaries.append(item)

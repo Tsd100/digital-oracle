@@ -7,9 +7,6 @@
     not_applicable: "不适用", unknown: "尚未判定",
   };
   const horizonLabels = { short: "短期", swing: "波段", medium: "中期" };
-  let dashboardData = null;
-  let activeFilter = "all";
-
   const $ = (selector) => document.querySelector(selector);
   const node = (tag, className, text) => {
     const el = document.createElement(tag);
@@ -29,6 +26,7 @@
       hour12: false,
     }).format(parsed);
   }
+  function dateKey(value) { return value ? value.slice(0, 10) : ""; }
 
   function setupTheme() {
     const button = $("#theme-toggle");
@@ -64,79 +62,120 @@
     });
   }
 
-  function subjectVisible(item) {
-    if (activeFilter === "changed") return Boolean(item.previous_direction);
-    if (activeFilter === "current") return item.freshness === "current";
-    return item.report_count > 0;
+  function makeSignalCell(item, point) {
+    const button = node("button", `signal-cell ${point.direction}`);
+    button.type = "button";
+    button.dataset.hash = point.hash || "";
+    button.dataset.subject = item.name;
+    button.dataset.direction = point.direction;
+    button.dataset.analysisAt = point.analysis_at || "";
+    button.dataset.evidence = point.evidence || "";
+    button.setAttribute("aria-label", `${item.name}，${formatDate(point.analysis_at)}，${directionLabel(point.direction)}`);
+    button.title = `${item.name} · ${formatDate(point.analysis_at)} · ${directionLabel(point.direction)}`;
+    button.append(node("span", "signal-dot"));
+    return button;
   }
 
-  function renderSubjects(data) {
-    const grid = $("#subject-grid");
-    grid.replaceChildren();
-    const items = data.subjects.filter(subjectVisible);
-    items.forEach((item) => {
-      const link = node("a", `subject-card ${item.latest_direction} freshness-${item.freshness}`);
-      link.href = item.timeline_url;
-      link.dataset.changed = item.previous_direction ? "true" : "false";
-      const head = node("div", "subject-head");
-      const title = node("div", "");
-      title.append(node("h3", "", item.name));
-      title.append(node("span", "subject-time", formatDate(item.latest_analysis_at, true)));
-      head.append(title);
-      head.append(node("span", `direction-badge ${item.latest_direction}`, directionLabel(item.latest_direction)));
-      link.append(head);
-      link.append(node("p", "subject-evidence", item.latest_evidence));
-
-      if (item.previous_direction) {
-        const change = node("p", "subject-change");
-        change.append(node("span", "", "最近变化"));
-        change.append(document.createTextNode(`${directionLabel(item.previous_direction)} → ${directionLabel(item.latest_direction)}`));
-        link.append(change);
-      } else {
-        link.append(node("p", "subject-change stable", "现有记录中暂无方向切换"));
-      }
-
-      const horizons = node("div", "horizon-row");
-      if (item.horizons.length) {
-        item.horizons.forEach((trend) => {
-          const chip = node("span", `horizon-chip ${trend.direction}`);
-          chip.append(node("b", "", horizonLabels[trend.horizon] || trend.horizon));
-          chip.append(document.createTextNode(directionLabel(trend.direction)));
-          horizons.append(chip);
-        });
-      } else {
-        horizons.append(node("span", "horizon-chip legacy", "历史报告轨道"));
-      }
-      link.append(horizons);
-      const footer = node("div", "subject-footer");
-      footer.append(node("span", "", `${item.report_count} 份报告 · ${item.resolved_count} 个有效节点`));
-      footer.append(node("span", "open-label", "查看时间线 →"));
-      link.append(footer);
-      grid.append(link);
+  function renderHorizons(data) {
+    const container = $("#horizon-matrix-content");
+    container.replaceChildren();
+    const table = node("table", "signal-table horizon-table");
+    const head = node("thead");
+    const headRow = node("tr");
+    headRow.append(node("th", "subject-column", "主题"));
+    ["short", "swing", "medium"].forEach((key) => headRow.append(node("th", "", horizonLabels[key])));
+    headRow.append(node("th", "update-column", "更新时间"));
+    head.append(headRow); table.append(head);
+    const body = node("tbody");
+    data.subjects.filter((item) => item.report_count > 0).forEach((item) => {
+      const row = node("tr");
+      const subject = node("th", "subject-column"); subject.scope = "row";
+      const link = node("a", "subject-link", item.name); link.href = item.timeline_url; subject.append(link); row.append(subject);
+      const byHorizon = Object.fromEntries(item.horizons.map((trend) => [trend.horizon, trend]));
+      ["short", "swing", "medium"].forEach((key) => {
+        const cell = node("td", "horizon-value");
+        const trend = byHorizon[key];
+        if (trend) {
+          const badge = node("span", `matrix-badge ${trend.direction}`, directionLabel(trend.direction));
+          badge.title = trend.evidence || "";
+          cell.append(badge);
+        } else {
+          cell.append(node("span", "matrix-empty", "—"));
+        }
+        row.append(cell);
+      });
+      row.append(node("td", "update-column", formatDate(item.latest_analysis_at, true)));
+      body.append(row);
     });
-    if (!items.length) grid.append(node("p", "empty-state", "当前筛选下没有主题。"));
+    table.append(body); container.append(table);
+  }
+
+  function renderHistory(data) {
+    const container = $("#history-matrix-content");
+    container.replaceChildren();
+    const subjects = data.subjects.filter((item) => item.history.length > 0);
+    const dates = [...new Set(subjects.flatMap((item) => item.history.map((point) => dateKey(point.analysis_at))))]
+      .filter(Boolean).sort().slice(-18);
+    if (!dates.length) { container.append(node("p", "empty-state", "尚无可展示的历史研判。")); return; }
+    const table = node("table", "signal-table history-table");
+    const head = node("thead"); const headRow = node("tr");
+    headRow.append(node("th", "subject-column", "主题"));
+    dates.forEach((date) => { const th = node("th", "date-column", date.slice(5).replace("-", "/")); th.title = date; headRow.append(th); });
+    head.append(headRow); table.append(head);
+    const body = node("tbody");
+    subjects.forEach((item) => {
+      const row = node("tr");
+      const subject = node("th", "subject-column"); subject.scope = "row";
+      const link = node("a", "subject-link", item.name); link.href = item.timeline_url; subject.append(link); row.append(subject);
+      const byDate = new Map(); item.history.forEach((point) => byDate.set(dateKey(point.analysis_at), point));
+      dates.forEach((date) => {
+        const cell = node("td", "history-value"); const point = byDate.get(date);
+        if (point) cell.append(makeSignalCell(item, point));
+        else cell.append(node("span", "history-gap", ""));
+        row.append(cell);
+      });
+      body.append(row);
+    });
+    table.append(body); container.append(table);
+    requestAnimationFrame(() => { container.scrollLeft = container.scrollWidth; });
+  }
+
+  function closeDrawer() {
+    $("#signal-drawer").hidden = true; $("#drawer-backdrop").hidden = true;
+    document.body.classList.remove("drawer-open");
+  }
+
+  async function openDrawer(button) {
+    const drawer = $("#signal-drawer");
+    $("#drawer-title").textContent = `${button.dataset.subject} · ${directionLabel(button.dataset.direction)}`;
+    $("#drawer-meta").textContent = formatDate(button.dataset.analysisAt, true);
+    $("#drawer-evidence").textContent = button.dataset.evidence || "暂无证据摘要";
+    $("#drawer-timeline").href = `/timeline?subject=${encodeURIComponent(button.dataset.subject)}`;
+    $("#drawer-content").textContent = "加载中…";
+    drawer.hidden = false; $("#drawer-backdrop").hidden = false; document.body.classList.add("drawer-open");
+    $("#drawer-close").focus();
+    if (!button.dataset.hash) { $("#drawer-content").textContent = "该节点暂无原文索引。"; return; }
+    try {
+      const response = await fetch(`/api/timeline/report/${encodeURIComponent(button.dataset.hash)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const report = await response.json();
+      const content = report.content || report.summary || "暂无报告原文";
+      $("#drawer-content").textContent = content.length > 6000 ? `${content.slice(0, 6000)}\n\n……（摘录已截断）` : content;
+    } catch (error) {
+      $("#drawer-content").textContent = `原文加载失败：${error.message}`;
+    }
   }
 
   function renderChanges(data) {
-    const feed = $("#recent-changes");
-    feed.replaceChildren();
-    if (!data.recent_changes.length) {
-      feed.append(node("p", "empty-state", "现有记录中尚未发现方向切换。"));
-      return;
-    }
+    const feed = $("#recent-changes"); feed.replaceChildren();
+    if (!data.recent_changes.length) { feed.append(node("p", "empty-state", "现有记录中尚未发现方向切换。")); return; }
     data.recent_changes.forEach((item) => {
-      const link = node("a", "change-item");
-      link.href = item.timeline_url;
+      const link = node("a", "change-item"); link.href = item.timeline_url;
       const marker = node("span", `change-marker ${item.to_direction}`);
-      const content = node("div", "change-content");
-      const top = node("div", "change-title");
-      top.append(node("strong", "", item.subject));
-      top.append(node("time", "", formatDate(item.analysis_at, true)));
-      content.append(top);
-      content.append(node("p", "change-direction", `${directionLabel(item.from_direction)} → ${directionLabel(item.to_direction)}`));
-      content.append(node("p", "change-evidence", item.evidence));
-      link.append(marker, content);
-      feed.append(link);
+      const content = node("div", "change-content"); const top = node("div", "change-title");
+      top.append(node("strong", "", item.subject), node("time", "", formatDate(item.analysis_at, true)));
+      content.append(top, node("p", "change-direction", `${directionLabel(item.from_direction)} → ${directionLabel(item.to_direction)}`), node("p", "change-evidence", item.evidence));
+      link.append(marker, content); feed.append(link);
     });
   }
 
@@ -148,15 +187,9 @@
       ["旧报告整理", `${data.totals.needs_review} 份`, "muted"],
       ["分析工作台", `${data.totals.chat_analyses} 条历史记录`, ""],
     ];
-    const container = $("#health-content");
-    container.replaceChildren();
-    rows.forEach(([label, value, tone]) => {
-      const row = node("div", `health-row ${tone}`);
-      row.append(node("span", "", label), node("strong", "", value));
-      container.append(row);
-    });
-    const note = node("p", "health-note", "旧报告整理属于历史数据治理，不影响新报告自动建立三周期轨道。");
-    container.append(note);
+    const container = $("#health-content"); container.replaceChildren();
+    rows.forEach(([label, value, tone]) => { const row = node("div", `health-row ${tone}`); row.append(node("span", "", label), node("strong", "", value)); container.append(row); });
+    container.append(node("p", "health-note", "旧报告整理属于历史数据治理，不影响新报告自动建立三周期轨道。"));
     const actions = node("div", "health-actions");
     const ask = node("a", "health-action primary", "发起新分析"); ask.href = "/ask";
     const history = node("a", "health-action", "查看全部时间线"); history.href = "/timeline";
@@ -164,8 +197,7 @@
   }
 
   function render(data) {
-    dashboardData = data;
-    renderMetrics(data); renderSubjects(data); renderChanges(data); renderHealth(data);
+    renderMetrics(data); renderHorizons(data); renderHistory(data); renderChanges(data); renderHealth(data);
     $("#load-error").hidden = true;
   }
 
@@ -174,17 +206,11 @@
       const response = await fetch("/api/management/summary");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       render(await response.json());
-    } catch (error) {
-      $("#load-error-message").textContent = error.message;
-      $("#load-error").hidden = false;
-    }
+    } catch (error) { $("#load-error-message").textContent = error.message; $("#load-error").hidden = false; }
   }
 
-  document.querySelectorAll(".filter").forEach((button) => button.addEventListener("click", () => {
-    document.querySelectorAll(".filter").forEach((item) => item.classList.toggle("active", item === button));
-    activeFilter = button.dataset.filter;
-    if (dashboardData) renderSubjects(dashboardData);
-  }));
-  $("#retry").addEventListener("click", load);
-  setupTheme(); load();
+  document.addEventListener("click", (event) => { const cell = event.target.closest(".signal-cell"); if (cell) openDrawer(cell); });
+  $("#drawer-close").addEventListener("click", closeDrawer); $("#drawer-backdrop").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDrawer(); });
+  $("#retry").addEventListener("click", load); setupTheme(); load();
 })();

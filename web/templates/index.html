@@ -36,16 +36,21 @@
       </div>
     </section>
 
-    <section class="section-block">
+    <section id="horizon-matrix" class="section-block matrix-section">
       <div class="section-heading">
-        <div><p class="eyebrow">SUBJECT WATCHLIST</p><h2>主题研判总览</h2></div>
-        <div class="view-controls">
-          <button class="filter active" data-filter="all" type="button">全部</button>
-          <button class="filter" data-filter="changed" type="button">近期变化</button>
-          <button class="filter" data-filter="current" type="button">近期更新</button>
-        </div>
+        <div><p class="eyebrow">CURRENT HORIZONS</p><h2>当前三周期矩阵</h2></div>
+        <p class="section-note">只有结构化 DO 报告才进入本表，空白表示尚未建立。</p>
       </div>
-      <div id="subject-grid" class="subject-grid" aria-live="polite"></div>
+      <div id="horizon-matrix-content" class="matrix-scroll" aria-live="polite"></div>
+    </section>
+
+    <section id="history-matrix" class="section-block matrix-section">
+      <div class="section-heading">
+        <div><p class="eyebrow">SIGNAL HISTORY</p><h2>多主题研判状态矩阵</h2></div>
+        <div class="matrix-legend"><span class="bullish">偏多</span><span class="neutral">震荡</span><span class="mixed">分歧</span><span class="bearish">偏空</span></div>
+      </div>
+      <p class="section-note matrix-intro">每个色块代表一次独立分析，空白不延续上一次判断。点击色块查看证据和报告原文。</p>
+      <div id="history-matrix-content" class="matrix-scroll" aria-live="polite"></div>
     </section>
 
     <section class="lower-grid">
@@ -59,6 +64,17 @@
       </aside>
     </section>
   </main>
+
+  <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+  <aside id="signal-drawer" class="signal-drawer" hidden aria-labelledby="drawer-title">
+    <button id="drawer-close" class="drawer-close" type="button" aria-label="关闭详情">×</button>
+    <p class="eyebrow">SIGNAL DETAIL</p>
+    <h2 id="drawer-title">研判详情</h2>
+    <div id="drawer-meta" class="drawer-meta"></div>
+    <p id="drawer-evidence" class="drawer-evidence"></p>
+    <div class="drawer-report"><h3>报告摘录</h3><pre id="drawer-content">加载中…</pre></div>
+    <div class="drawer-actions"><a id="drawer-timeline" href="/timeline">查看完整时间线</a></div>
+  </aside>
 
   <div id="load-error" class="load-error" hidden>
     <strong>管理数据加载失败</strong><span id="load-error-message"></span><button id="retry" type="button">重新加载</button>

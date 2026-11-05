@@ -30,10 +30,11 @@ from web.db import delete_history_item, get_history, get_history_item, init_db, 
 from web.fetcher import run_fetch
 from web.analysis import generate_report, _is_llm_configured, AVAILABLE_MODELS, DEFAULT_MODEL
 from digital_oracle.timeline import TimelineStore, compare_subject, import_sources, publish_report
-from digital_oracle.timeline.store import DEFAULT_DB as TIMELINE_DEFAULT_DB, DEFAULT_ARCHIVE
 from web.management import build_management_summary
+from web.config import runtime_paths
 
-TIMELINE_DB = TIMELINE_DEFAULT_DB
+RUNTIME_PATHS = runtime_paths(PROJECT_ROOT)
+TIMELINE_DB = RUNTIME_PATHS.timeline_db
 
 # ---------------------------------------------------------------------------
 # In-memory registry for active SSE streams
@@ -115,10 +116,13 @@ def create_app() -> Flask:
     )
 
     init_db()
-    if TIMELINE_DB == TIMELINE_DEFAULT_DB:
+    if TIMELINE_DB == RUNTIME_PATHS.timeline_db:
         # Normal startup refreshes the index from immutable report sources.
         try:
-            import_sources(TIMELINE_DB, [PROJECT_ROOT / "reports", DEFAULT_ARCHIVE], Path(__file__).resolve().parent / "digital_oracle.db")
+            sources = [RUNTIME_PATHS.reports_dir]
+            if RUNTIME_PATHS.archive_dir.exists():
+                sources.append(RUNTIME_PATHS.archive_dir)
+            import_sources(TIMELINE_DB, sources, RUNTIME_PATHS.chat_db)
         except Exception as exc:
             app.logger.warning("历史时间线索引暂不可用: %s", exc)
 
@@ -172,6 +176,25 @@ def create_app() -> Flask:
     @app.route("/api/management/summary")
     def api_management_summary():
         return jsonify(build_management_summary(TimelineStore(TIMELINE_DB), get_history(limit=10000)))
+
+    @app.route("/healthz")
+    def healthz():
+        status = {"status": "ok", "timeline_db": "ok", "chat_db": "ok"}
+        try:
+            TimelineStore(TIMELINE_DB).counts()
+        except Exception:
+            status["timeline_db"] = "error"
+        try:
+            from web.db import get_connection
+            connection = get_connection()
+            connection.execute("SELECT 1").fetchone()
+            connection.close()
+        except Exception:
+            status["chat_db"] = "error"
+        if "error" in status.values():
+            status["status"] = "error"
+            return jsonify(status), 503
+        return jsonify(status)
 
     @app.route("/api/timeline/report/<digest>")
     def api_timeline_report(digest: str):

@@ -1,0 +1,32 @@
+services:
+  digital-oracle:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: digital-oracle-dashboard:local
+    container_name: digital-oracle-dashboard
+    restart: unless-stopped
+    ports:
+      - "${DO_PORT:-45819}:8000"
+    environment:
+      DO_DATA_DIR: /app/data
+      DO_REPORTS_DIR: /app/reports
+      DO_ARCHIVE_DIR: /app/archive
+      TZ: Asia/Shanghai
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-pro}
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./archive:/app/archive:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
